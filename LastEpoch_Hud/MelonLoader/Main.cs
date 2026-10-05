@@ -24,6 +24,7 @@ namespace LastEpoch_Hud
         public override void OnInitializeMelon()
         {
             logger_instance = LoggerInstance;
+            LoggerInstance.Msg(Scripts.Core.Diagnostics.BuildStamp.Format(BuildInfo.Commit, BuildInfo.Dirty, BuildInfo.Time));
         }
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.33530.505
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LastEpoch_Hud", "LastEpoch_Hud\LastEpoch_Hud.csproj", "{FDDA6FB9-B165-44BB-988A-A6979F74EC43}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LastEpoch_Hud.Tests", "LastEpoch_Hud.Tests\LastEpoch_Hud.Tests.csproj", "{25CCE870-4D3E-4BC5-A226-37345077F506}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Keyboard|Any CPU = Keyboard|Any CPU
@@ -15,6 +17,10 @@ Global
 		{FDDA6FB9-B165-44BB-988A-A6979F74EC43}.Keyboard|Any CPU.Build.0 = Keyboard|Any CPU
 		{FDDA6FB9-B165-44BB-988A-A6979F74EC43}.WinGamepad|Any CPU.ActiveCfg = WinGamepad|Any CPU
 		{FDDA6FB9-B165-44BB-988A-A6979F74EC43}.WinGamepad|Any CPU.Build.0 = WinGamepad|Any CPU
+		{25CCE870-4D3E-4BC5-A226-37345077F506}.Keyboard|Any CPU.ActiveCfg = Debug|Any CPU
+		{25CCE870-4D3E-4BC5-A226-37345077F506}.Keyboard|Any CPU.Build.0 = Debug|Any CPU
+		{25CCE870-4D3E-4BC5-A226-37345077F506}.WinGamepad|Any CPU.ActiveCfg = Debug|Any CPU
+		{25CCE870-4D3E-4BC5-A226-37345077F506}.WinGamepad|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

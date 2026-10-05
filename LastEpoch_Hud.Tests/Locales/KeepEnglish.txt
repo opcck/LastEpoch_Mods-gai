@@ -1,0 +1,22 @@
+# Locale values that are meant to stay identical to English (names, symbols, loanwords).
+# Format, one per line: <lang>:<key>   e.g.  fr:Some Key
+# <key> must exist in base.json. An entry that stops matching the English value fails the test; remove it.
+
+# French words that are spelled exactly like the English ones (cognates, game terms).
+fr:Intelligence
+fr:Unique
+fr:Minimum
+fr:Maximum
+fr:Potions
+fr:Type
+fr:Scorpions
+fr:Mage
+fr:Rare
+# Not words: option label and a "?" placeholder.
+fr:Option A
+fr:Max ?
+# Same word in French, only the case differs.
+fr:AutoCast
+fr:Zoom Minimum
+fr:Angle Minimum
+fr:Angle Maximum

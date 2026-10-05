@@ -37,6 +37,34 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             else { return false; }
         }
 
+        static bool MultiplierOn()
+        {
+            if ((Scenes.IsGameScene()) && (!Save_Manager.instance.IsNullOrDestroyed()))
+            {
+                return Save_Manager.instance.data.Factions.TheWoven.Enable_PointMultiplier;
+            }
+            else { return false; }
+        }
+
+        static bool Active()
+        {
+            return CanRun() || MultiplierOn();
+        }
+
+        static int Multiplier()
+        {
+            return SettingRow.Clamp(Save_Manager.instance.data.Factions.TheWoven.PointMultiplier);
+        }
+
+        static int TargetPoints()
+        {
+            int points;
+            if (CanRun()) { points = ClampPoints(Save_Manager.instance.data.Factions.TheWoven.TreePoints); }
+            else if (!TryRealEarned(out points)) { points = hasRealSnapshot ? realSnapshot : 0; }
+            if (MultiplierOn()) { points = ClampPoints(points * Multiplier()); }
+            return points;
+        }
+
         public static int ClampPoints(int points)
         {
             if (points < 0) { return 0; }
@@ -101,14 +129,15 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             writing = true;
             try
             {
-                if (CanRun())
+                if (Active())
                 {
                     if (!hasRealSnapshot)
                     {
-                        realSnapshot = tree._EarnedWeaverPoints_k__BackingField;
+                        int earned;
+                        realSnapshot = (ushort)(TryRealEarned(out earned) ? earned : tree._EarnedWeaverPoints_k__BackingField);
                         hasRealSnapshot = true;
                     }
-                    tree.EarnedWeaverPoints = (ushort)ClampPoints(Save_Manager.instance.data.Factions.TheWoven.TreePoints);
+                    tree.EarnedWeaverPoints = (ushort)TargetPoints();
                     overrideApplied = true;
                     usedOverride = true;
                 }
@@ -148,8 +177,8 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             [HarmonyPostfix]
             static void Postfix(ref ushort __result)
             {
-                if (writing || !CanRun()) { return; }
-                __result = (ushort)ClampPoints(Save_Manager.instance.data.Factions.TheWoven.TreePoints);
+                if (writing || !Active()) { return; }
+                __result = (ushort)TargetPoints();
             }
         }
 
@@ -159,8 +188,8 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             [HarmonyPostfix]
             static void Postfix(ref int __result)
             {
-                if (!CanRun()) { return; }
-                __result = ClampPoints(Save_Manager.instance.data.Factions.TheWoven.TreePoints);
+                if (!Active()) { return; }
+                __result = TargetPoints();
             }
         }
 
@@ -170,8 +199,8 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             [HarmonyPostfix]
             static void Postfix(ref int __result)
             {
-                if (readingMax || !CanRun()) { return; }
-                int points = ClampPoints(Save_Manager.instance.data.Factions.TheWoven.TreePoints);
+                if (readingMax || !Active()) { return; }
+                int points = TargetPoints();
                 if (points > __result) { __result = points; }
             }
         }
@@ -182,7 +211,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             [HarmonyPrefix]
             static void Prefix(LocalTreeData.WeaverTreeData __instance)
             {
-                if (!CanRun()) { return; }
+                if (!Active()) { return; }
                 WritePoints(__instance);
             }
         }
@@ -213,7 +242,12 @@ namespace LastEpoch_Hud.Scripts.Mods.Factions.TheWoven
             [HarmonyPostfix]
             static void Postfix()
             {
-                if (CanRun() || !usedOverride || writing) { return; }
+                if (Active())
+                {
+                    ApplyToPlayer();
+                    return;
+                }
+                if (!usedOverride || writing) { return; }
                 if (Refs_Manager.player_treedata.IsNullOrDestroyed() || Refs_Manager.player_treedata.weaverTree == null) { return; }
                 writing = true;
                 try { RestoreRealPoints(Refs_Manager.player_treedata.weaverTree); }

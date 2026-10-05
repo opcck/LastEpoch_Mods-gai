@@ -1,4 +1,5 @@
-﻿using Il2Cpp;
+﻿using HarmonyLib;
+using Il2Cpp;
 using Il2CppItemFiltering;
 using Il2CppLE.Factions;
 using Il2CppLE.Services.Visuals;
@@ -51,9 +52,7 @@ namespace LastEpoch_Hud.Scripts
         public static MovingPlayer player_moving = null;
         public static AbilityManager ability_manager = null;
         public static FactionTracker faction_tracker = null;
-        float nextHeavyProbe = 0f;
-        string probedScene = "";
-        int probesLeft = 0;
+        float nextSlowLoad;
 
         void Awake()
         {
@@ -82,87 +81,37 @@ namespace LastEpoch_Hud.Scripts
             }
         }
 
-        static void TryRun(System.Action action)
+        void LoadSlowRefs()
         {
-            try
-            {
-                action();
-            }
-            catch (System.Exception)
-            {
-            }
+            bool missing = character_class_list.IsNullOrDestroyed()
+                || item_list.IsNullOrDestroyed()
+                || unique_list.IsNullOrDestroyed()
+                || set_bonuses_list.IsNullOrDestroyed()
+                || quest_list.IsNullOrDestroyed()
+                || ability_manager.IsNullOrDestroyed()
+                || EternityCachePanelUI.IsNullOrDestroyed();
+            if (!missing || (UnityEngine.Time.unscaledTime < nextSlowLoad)) { return; }
+            nextSlowLoad = UnityEngine.Time.unscaledTime + 15f;
+            if (character_class_list.IsNullOrDestroyed()) { character_class_list = TryGet(CharacterClassList.get); }
+            if (item_list.IsNullOrDestroyed()) { item_list = TryGet(ItemList.get); }
+            if (unique_list.IsNullOrDestroyed()) { unique_list = TryGet(() => UniqueList.instance); }
+            if (set_bonuses_list.IsNullOrDestroyed()) { set_bonuses_list = TryGet(() => SetBonusesList.instance); }
+            if (quest_list.IsNullOrDestroyed()) { quest_list = TryGet(QuestList.get); }
+            if (ability_manager.IsNullOrDestroyed()) { ability_manager = TryGet(() => AbilityManager.instance); }
+            if (EternityCachePanelUI.IsNullOrDestroyed()) { EternityCachePanelUI = EternityCachePanelUI.instance; }
         }
 
         void Tick()
         {
-            // FindObjectOfType and the list getters hitch the game. Probe a few times after a
-            // scene change, then stop. Repeating the search every second is what stuttered combat.
-            if (probedScene != Scenes.SceneName)
-            {
-                probedScene = Scenes.SceneName;
-                probesLeft = Scenes.IsGameScene() ? 3 : 1;
-                nextHeavyProbe = UnityEngine.Time.unscaledTime + 1f;
-            }
-            bool heavy = probesLeft > 0 && UnityEngine.Time.unscaledTime >= nextHeavyProbe;
-            if (heavy)
-            {
-                probesLeft--;
-                nextHeavyProbe = UnityEngine.Time.unscaledTime + 3f;
-            }
-
             if ((game_uibase.IsNullOrDestroyed()) && (!UIBase.instance.IsNullOrDestroyed())) { game_uibase = UIBase.instance; }
             if ((epoch_input_manager.IsNullOrDestroyed()) && (!EpochInputManager.instance.IsNullOrDestroyed())) { epoch_input_manager = EpochInputManager.instance; }
-            if (heavy && character_class_list.IsNullOrDestroyed()) { character_class_list = TryGet(CharacterClassList.get); }
-            if (heavy && item_list.IsNullOrDestroyed()) { item_list = TryGet(ItemList.get); }
-            if (heavy && unique_list.IsNullOrDestroyed())
-            {
-                TryRun(() =>
-                {
-                    if (UniqueList.instance.IsNullOrDestroyed()) { UniqueList.getUnique(0); }
-                });
-                unique_list = TryGet(() => UniqueList.instance);
-            }
-            if (heavy && set_bonuses_list.IsNullOrDestroyed())
-            {
-                TryRun(() =>
-                {
-                    if (SetBonusesList.instance.IsNullOrDestroyed()) { SetBonusesList.getEntry(0); }
-                });
-                set_bonuses_list = TryGet(() => SetBonusesList.instance);
-            }
-            if (heavy && quest_list.IsNullOrDestroyed()) { quest_list = TryGet(QuestList.get); }
+            LoadSlowRefs();
             if ((scene_list.IsNullOrDestroyed()) && (!SceneList.instance.IsNullOrDestroyed())) { scene_list = SceneList.instance; }
             if ((character_select.IsNullOrDestroyed()) && (!CharacterSelect.instance.IsNullOrDestroyed())) { character_select = CharacterSelect.instance; }
-            if (ability_manager.IsNullOrDestroyed()) { ability_manager = TryGet(() => AbilityManager.instance); }
+            if ((BlessingsPanel.IsNullOrDestroyed()) && (!InventoryPanelUI.IsNullOrDestroyed())) { BlessingsPanel = InventoryPanelUI.blessingPanel; }
 
             if (Scenes.IsGameScene())
             {
-                if (heavy && !game_uibase.IsNullOrDestroyed())
-                {
-                    if (InventoryPanelUI.IsNullOrDestroyed())
-                    {
-                        InventoryPanelUI = UnityEngine.Object.FindObjectOfType<InventoryPanelUI>();
-                    }
-                    if (EternityCachePanelUI.IsNullOrDestroyed())
-                    {
-                        EternityCachePanelUI = EternityCachePanelUI.instance;
-                    }
-                    if (crafting_panel_ui.IsNullOrDestroyed())
-                    {
-                        crafting_panel_ui = UnityEngine.Object.FindObjectOfType<CraftingPanelUI>();
-                    }
-                    if (craft_slot_manager.IsNullOrDestroyed()) { craft_slot_manager = TryGet(() => UnityEngine.Object.FindObjectOfType<CraftingSlotManager>()); }
-                    if (craft_materials_holder.IsNullOrDestroyed())
-                    {
-                        var materialsPanel = UnityEngine.Object.FindObjectOfType<CraftingMaterialsPanelUI>();
-                        if (!materialsPanel.IsNullOrDestroyed())
-                        {
-                            craft_materials_holder = materialsPanel.GetComponent<UIPanel>();
-                        }
-                    }
-                    if ((BlessingsPanel.IsNullOrDestroyed()) && (!InventoryPanelUI.IsNullOrDestroyed())) { BlessingsPanel = InventoryPanelUI.blessingPanel; }
-                }
-
                 if ((ground_item_manager.IsNullOrDestroyed()) && (!GroundItemManager.instance.IsNullOrDestroyed())) { ground_item_manager = GroundItemManager.instance; }
                 if ((item_containers_manager.IsNullOrDestroyed()) && (!ItemContainersManager.Instance.IsNullOrDestroyed())) { item_containers_manager = ItemContainersManager.Instance; }
                 if (player_actor.IsNullOrDestroyed()) { player_actor = PlayerFinder.getPlayerActor(); }
@@ -187,6 +136,48 @@ namespace LastEpoch_Hud.Scripts
             else
             {
                 if (!player_data.IsNullOrDestroyed()) { player_data = null; }
+            }
+        }
+
+        [HarmonyPatch(typeof(InventoryPanelUI), "Awake")]
+        public class InventoryPanelUI_Awake
+        {
+            [HarmonyPostfix]
+            static void Postfix(InventoryPanelUI __instance)
+            {
+                InventoryPanelUI = __instance;
+                if (!__instance.IsNullOrDestroyed()) { BlessingsPanel = __instance.blessingPanel; }
+            }
+        }
+
+        [HarmonyPatch(typeof(CraftingSlotManager), "Awake")]
+        public class CraftingSlotManager_Awake
+        {
+            [HarmonyPostfix]
+            static void Postfix(CraftingSlotManager __instance)
+            {
+                craft_slot_manager = __instance;
+            }
+        }
+
+        [HarmonyPatch(typeof(CraftingMaterialsPanelUI), "Initialize")]
+        public class CraftingMaterialsPanelUI_Initialize
+        {
+            [HarmonyPostfix]
+            static void Postfix(CraftingMaterialsPanelUI __instance)
+            {
+                if (__instance.IsNullOrDestroyed()) { return; }
+                craft_materials_holder = __instance.GetComponent<UIPanel>();
+            }
+        }
+
+        [HarmonyPatch(typeof(EternityCachePanelUI), "Awake")]
+        public class EternityCachePanelUI_Awake
+        {
+            [HarmonyPostfix]
+            static void Postfix(EternityCachePanelUI __instance)
+            {
+                EternityCachePanelUI = __instance;
             }
         }
 

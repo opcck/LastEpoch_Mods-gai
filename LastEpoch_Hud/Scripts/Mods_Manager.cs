@@ -27,11 +27,11 @@ namespace LastEpoch_Hud.Scripts
         GameObject items_essentiasanguis_obj = null;
         //GameObject items_temporalis_obj = null;
         //GameObject items_crafting_obj = null;
-        GameObject minimap_icons_obj = null;
         GameObject monoliths_complete_objectives_obj = null;
         GameObject bank_quad_obj = null;
         GameObject Cosmetics_offline_obj = null;
         GameObject damage_meter_obj = null;
+        GameObject teleport_to_scene_obj = null;
 
         bool initialized = false;
         bool enable = false;
@@ -119,10 +119,6 @@ namespace LastEpoch_Hud.Scripts
             character_bank_from_anywhere.AddComponent<Mods.Character.Character_Bank_Anywhere>();
             Mods_Objects.Add(character_bank_from_anywhere);
 
-            minimap_icons_obj = Object.Instantiate(new GameObject { name = "Mod_Minimap_Icons" }, Vector3.zero, Quaternion.identity);
-            minimap_icons_obj.AddComponent<Mods.Minimap.Minimap_Icons>();
-            Mods_Objects.Add(minimap_icons_obj);
-
             monoliths_complete_objectives_obj = Object.Instantiate(new GameObject { name = "Mod_Monoliths_Complete_Objectives" }, Vector3.zero, Quaternion.identity);
             monoliths_complete_objectives_obj.AddComponent<Mods.Monoliths.Monoliths_CompleteObjective>();
             Mods_Objects.Add(monoliths_complete_objectives_obj);
@@ -138,6 +134,10 @@ namespace LastEpoch_Hud.Scripts
             damage_meter_obj = Object.Instantiate(new GameObject { name = "mod_damage_meter" }, Vector3.zero, Quaternion.identity);
             damage_meter_obj.AddComponent<Mods.UI.DamageMeter>();
             Mods_Objects.Add(damage_meter_obj);
+
+            teleport_to_scene_obj = Object.Instantiate(new GameObject { name = "Mod_Teleport_To_Scene" }, Vector3.zero, Quaternion.identity);
+            teleport_to_scene_obj.AddComponent<Mods.Teleport.Teleport_ToScene>();
+            Mods_Objects.Add(teleport_to_scene_obj);
 
             foreach (GameObject mod in Mods_Objects) { Object.DontDestroyOnLoad(mod); }
             Mods_Objects.Clear();

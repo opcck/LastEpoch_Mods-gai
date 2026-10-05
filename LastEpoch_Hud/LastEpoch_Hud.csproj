@@ -157,13 +157,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="Scripts\Mods\Summon\**" />
-    <Compile Remove="Scripts\Mods\Teleport\**" />
-    <Compile Remove="Scripts\Mods\Spawn\TimeBeast.cs" />
-    <Compile Remove="Scripts\Mods\Craft\Craft_MaxTier.cs" />
-    <Compile Remove="Scripts\Mods\Harbringers\**" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.3.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
@@ -195,8 +188,56 @@
     <None Update="LastEpoch_Hud\Locales\en.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="LastEpoch_Hud\Locales\fr.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="LastEpoch_Hud\Locales\zh.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <!-- Build stamp: obj/<cfg>/BuildInfo.key holds "commit|dirty", BuildInfo.g.cs adds the time. Never fails the build when git is missing. -->
+  <!-- Always runs; defines the paths (IntermediateOutputPath is only known at target time). Design-time builds (Rider/VS) skip git and keep an existing key. -->
+  <Target Name="WriteBuildInfoKey" BeforeTargets="CoreCompile" DependsOnTargets="ResolveReferences">
+    <Exec Condition="'$(DesignTimeBuild)' != 'true'" Command="git rev-parse --short HEAD 2&gt;nul" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" ContinueOnError="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="BuildInfoCommit" />
+    </Exec>
+    <Exec Condition="'$(DesignTimeBuild)' != 'true'" Command="git --no-optional-locks status --porcelain -- . 2&gt;nul" WorkingDirectory="$(MSBuildProjectDirectory)" ConsoleToMSBuild="true" ContinueOnError="true" IgnoreExitCode="true" IgnoreStandardErrorWarningFormat="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" ItemName="BuildInfoStatusLine" />
+    </Exec>
+    <PropertyGroup>
+      <BuildInfoKeyFile>$(IntermediateOutputPath)BuildInfo.key</BuildInfoKeyFile>
+      <BuildInfoFile>$(IntermediateOutputPath)BuildInfo.g.cs</BuildInfoFile>
+      <BuildInfoCommit>$(BuildInfoCommit.Trim())</BuildInfoCommit>
+      <BuildInfoDirty Condition="'@(BuildInfoStatusLine)' != ''">true</BuildInfoDirty>
+      <BuildInfoDirty Condition="'@(BuildInfoStatusLine)' == ''">false</BuildInfoDirty>
+      <BuildInfoWriteKey Condition="'$(DesignTimeBuild)' != 'true' or !Exists('$(BuildInfoKeyFile)')">true</BuildInfoWriteKey>
+    </PropertyGroup>
+    <WriteLinesToFile Condition="'$(BuildInfoWriteKey)' == 'true'" File="$(BuildInfoKeyFile)" Lines="$(BuildInfoCommit)|$(BuildInfoDirty)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+  <!-- The time only refreshes when a compile is needed anyway (inputs newer than BuildInfo.g.cs). -->
+  <Target Name="WriteBuildInfo" BeforeTargets="CoreCompile" DependsOnTargets="WriteBuildInfoKey" Inputs="@(Compile);@(ReferencePath);$(MSBuildProjectFullPath);$(BuildInfoKeyFile)" Outputs="$(BuildInfoFile)">
+    <PropertyGroup>
+      <BuildInfoTime>$([System.DateTime]::Now.ToString('yyyy-MM-dd HH:mm'))</BuildInfoTime>
+    </PropertyGroup>
+    <ItemGroup>
+      <BuildInfoLine Include="namespace LastEpoch_Hud" />
+      <BuildInfoLine Include="{" />
+      <BuildInfoLine Include="    internal static class BuildInfo" />
+      <BuildInfoLine Include="    {" />
+      <BuildInfoLine Include="        public const string Commit = &quot;$(BuildInfoCommit)&quot;%3B" />
+      <BuildInfoLine Include="        public const string Time = &quot;$(BuildInfoTime)&quot;%3B" />
+      <BuildInfoLine Include="        public const bool Dirty = $(BuildInfoDirty)%3B" />
+      <BuildInfoLine Include="    }" />
+      <BuildInfoLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile Condition="'$(DesignTimeBuild)' != 'true' or !Exists('$(BuildInfoFile)')" File="$(BuildInfoFile)" Lines="@(BuildInfoLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+  </Target>
+  <!-- Always runs, even when WriteBuildInfo is skipped as up to date. -->
+  <Target Name="AddBuildInfoToCompile" BeforeTargets="CoreCompile" AfterTargets="WriteBuildInfo">
+    <ItemGroup>
+      <Compile Include="$(BuildInfoFile)" />
+      <FileWrites Include="$(BuildInfoFile)" />
+      <FileWrites Include="$(BuildInfoKeyFile)" />
+    </ItemGroup>
+  </Target>
 </Project>

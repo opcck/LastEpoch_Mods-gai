@@ -1,0 +1,2 @@
+# Bugs that already exist. Tests skip these ids and fail once one is fixed, so remove it then.
+# Add an id only for a bug you are not fixing now. Format: <kind>:<name>

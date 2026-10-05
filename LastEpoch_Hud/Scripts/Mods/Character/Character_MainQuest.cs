@@ -145,38 +145,9 @@ namespace LastEpoch_Hud.Scripts.Mods.Character
                 Main.logger_instance?.Msg("Save Character");
                 Refs_Manager.player_data.SaveData();
 
-                if (!Refs_Manager.game_uibase.IsNullOrDestroyed())
-                {
-                    Main.logger_instance?.Msg("Open Map");
-                    Refs_Manager.game_uibase.openMap();
-                    MapPanel map_panel = UnityEngine.Object.FindObjectOfType<MapPanel>();
-                    if (!map_panel.IsNullOrDestroyed())
-                    {
-                        Main.logger_instance?.Msg("Open Era");
-                        map_panel.OpenEra(map_panel.eras[map_panel.eras.Count - 1].era, false);
-
-                        Main.logger_instance?.Msg("Get Waypoint");
-                        UIWaypointStandard waypoint = GetWaypoint(monolith_scene, 0);
-                        if (waypoint == null) { Main.logger_instance?.Error("Waypoint not found for " + monolith_scene + " scene"); }
-                        else
-                        {
-                            Main.logger_instance?.Msg("Tp to Waypoint");
-                            waypoint.LoadWaypointScene();
-                        }
-                    }
-                    else { Main.logger_instance?.Error("Map instance is null"); }
-                }
+                Main.logger_instance?.Msg("Tp to the End of Time");
+                Teleport.Teleport_ToScene.StartTpToScene(monolith_scene);
             }
-        }
-        private static UIWaypointStandard GetWaypoint(string name, byte gate)
-        {
-            UIWaypointStandard result = null;
-            foreach (UIWaypointStandard waypoint in Object.FindObjectsOfType<UIWaypointStandard>())
-            {
-                if ((waypoint.sceneName == name) && (waypoint.gate == gate)) { result = waypoint; break; }
-            }
-
-            return result;
         }
     }
 }

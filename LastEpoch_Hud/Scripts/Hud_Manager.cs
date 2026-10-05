@@ -698,12 +698,11 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Items_Pickup_AutoStore_OnInventoryOpen": { Save_Manager.instance.data.Items.Pickup.Enable_AutoStore_OnInventoryOpen = __instance.isOn; break; }
                                     case "Toggle_Items_Pickup_AutoStore_Timer": { Save_Manager.instance.data.Items.Pickup.Enable_AutoStore_Timer = __instance.isOn; break; }
                                     case "Toggle_Items_Pickup_AutoSell_FromFilter": { Save_Manager.instance.data.Items.Pickup.Enable_AutoSell_FromFilter = __instance.isOn; break; }
+                                    case "Toggle_Items_Pickup_AutoShatter_FromFilter": { Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_FromFilter = __instance.isOn; break; }
+                                    case "Toggle_Items_Pickup_AutoShatter_Rune": { Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_UseRune = __instance.isOn; break; }
                                     
                                     case "Toggle_Items_Pickup_Range_Pickup": { Save_Manager.instance.data.Items.Pickup.Enable_RangePickup = __instance.isOn; break; }
                                     case "Toggle_Items_Pickup_Hide_Notifications": { Save_Manager.instance.data.Items.Pickup.Enable_HideMaterialsNotifications = __instance.isOn; break; }
-
-                                    case "Toggle_Items_Pickup_AutoShatter_FromFilter": { Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_FromFilter = __instance.isOn; break; }
-                                    case "Toggle_Items_Pickup_AutoShatter_Rune": { Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_Rune = __instance.isOn; break; }
 
                                     case "Toggle_Items_Craft_Enable": { Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod = __instance.isOn; break; }
                                     case "Toggle_Items_Craft_ForginPotencial": { Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial = __instance.isOn; break; }
@@ -829,13 +828,31 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_SkillLevel":
                                         {
                                             Save_Manager.instance.data.Skills.Enable_SkillLevel = __instance.isOn;
-                                            if (!__instance.isOn) { Mods.Skills.Skills_Level.Restore(); }
+                                            Mods.Skills.Skills_Level.Sync();
+                                            break;
+                                        }
+                                    case "Toggle_SkillLevelMultiplier":
+                                        {
+                                            Save_Manager.instance.data.Skills.Enable_SkillLevelMultiplier = __instance.isOn;
+                                            Mods.Skills.Skills_Level.Sync();
                                             break;
                                         }
                                     case "Toggle_PassivePoints":
                                         {
                                             Save_Manager.instance.data.Skills.Enable_PassivePoints = __instance.isOn;
-                                            if (!__instance.isOn) { Mods.Skills.Passives_Points.Restore(); }
+                                            Mods.Skills.Passives_Points.Sync();
+                                            break;
+                                        }
+                                    case "Toggle_PassivePointMultiplier":
+                                        {
+                                            Save_Manager.instance.data.Skills.Enable_PassivePointMultiplier = __instance.isOn;
+                                            Mods.Skills.Passives_Points.Sync();
+                                            break;
+                                        }
+                                    case "Toggle_Weaver_PointMultiplier":
+                                        {
+                                            Save_Manager.instance.data.Factions.TheWoven.Enable_PointMultiplier = __instance.isOn;
+                                            Mods.Factions.TheWoven.Faction_Woven_TreePoints.ApplyToPlayer();
                                             break;
                                         }
                                     case "Toggle_NoTarget": { Save_Manager.instance.data.Skills.MovementSkills.Enable_NoTarget = __instance.isOn; break; }
@@ -924,6 +941,14 @@ namespace LastEpoch_Hud.Scripts
                             if (__instance.name == "Slider_Weaver_TreePoints")
                             {
                                 Content.Character.Data.SetWeaverTreePoints(__instance.value);
+                                return;
+                            }
+                            if (__instance.name == "Slider_Weaver_PointMultiplier")
+                            {
+                                int multiplier = SettingRow.Clamp(__0);
+                                Save_Manager.instance.data.Factions.TheWoven.PointMultiplier = multiplier;
+                                if (!Content.Character.Data.weaver_multiplier_text.IsNullOrDestroyed()) { Content.Character.Data.weaver_multiplier_text.text = multiplier + "x"; }
+                                Mods.Factions.TheWoven.Faction_Woven_TreePoints.ApplyToPlayer();
                                 return;
                             }
                             if (__instance.name.Contains("Slider_Character_"))
@@ -1262,9 +1287,24 @@ namespace LastEpoch_Hud.Scripts
                                     case "Slider_Items_Craft_LegendaryPotencial": { Save_Manager.instance.data.Items.CraftingSlot.LegendaryPotencial = (int)__0; break; }
                                     case "Slider_Items_Craft_WeaverWill": { Save_Manager.instance.data.Items.CraftingSlot.WeaverWill = (int)__0; break; }
                                     case "Slider_Items_Pickup_AutoStore_Timer": { Save_Manager.instance.data.Items.Pickup.AutoStore_Timer = (int)__0; break; }
-                                    case "Slider_Items_Pickup_AutoShatter_Chance": { Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance = __0; break; }
-                                    case "Slider_Items_Pickup_AutoShatter_AffixChance": { Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance = __0; break; }
-                                    case "Slider_Items_Pickup_AutoShatter_QuantityChance": { Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance = __0; break; }
+                                    case "Slider_Items_Pickup_AutoShatter_Chance":
+                                        {
+                                            Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance = (int)__0;
+                                            if (!Content.Items.Pickup.autoshatter_chance_text.IsNullOrDestroyed()) { Content.Items.Pickup.autoshatter_chance_text.text = (int)__0 + " %"; }
+                                            break;
+                                        }
+                                    case "Slider_Items_Pickup_AutoShatter_AffixChance":
+                                        {
+                                            Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance = (int)__0;
+                                            if (!Content.Items.Pickup.autoshatter_affix_text.IsNullOrDestroyed()) { Content.Items.Pickup.autoshatter_affix_text.text = (int)__0 + " %"; }
+                                            break;
+                                        }
+                                    case "Slider_Items_Pickup_AutoShatter_QuantityChance":
+                                        {
+                                            Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance = (int)__0;
+                                            if (!Content.Items.Pickup.autoshatter_quantity_text.IsNullOrDestroyed()) { Content.Items.Pickup.autoshatter_quantity_text.text = (int)__0 + " %"; }
+                                            break;
+                                        }
                                 }
                             }
                             else if (__instance.name.Contains("Slider_Scenes_"))
@@ -1295,8 +1335,34 @@ namespace LastEpoch_Hud.Scripts
                                 switch (__instance.name)
                                 {
                                     case "Slider_SpecializationSlots": { Save_Manager.instance.data.Skills.SpecializationSlots = __0; break; }
-                                    case "Slider_SkillLevel": { Save_Manager.instance.data.Skills.SkillLevel = __0; break; }
-                                    case "Slider_PassivePoints": { Save_Manager.instance.data.Skills.PassivePoints = __0; break; }
+                                    case "Slider_SkillLevel":
+                                        {
+                                            Save_Manager.instance.data.Skills.SkillLevel = __0;
+                                            Mods.Skills.Skills_Level.ApplyAll();
+                                            break;
+                                        }
+                                    case "Slider_SkillLevelMultiplier":
+                                        {
+                                            int multiplier = SettingRow.Clamp(__0);
+                                            Save_Manager.instance.data.Skills.SkillLevelMultiplier = multiplier;
+                                            if (!Content.Skills.SkillTree.skill_level_multiplier_text.IsNullOrDestroyed()) { Content.Skills.SkillTree.skill_level_multiplier_text.text = multiplier + "x"; }
+                                            Mods.Skills.Skills_Level.ApplyAll();
+                                            break;
+                                        }
+                                    case "Slider_PassivePoints":
+                                        {
+                                            Save_Manager.instance.data.Skills.PassivePoints = __0;
+                                            Mods.Skills.Passives_Points.Apply();
+                                            break;
+                                        }
+                                    case "Slider_PassivePointMultiplier":
+                                        {
+                                            int multiplier = SettingRow.Clamp(__0);
+                                            Save_Manager.instance.data.Skills.PassivePointMultiplier = multiplier;
+                                            if (!Content.Skills.SkillTree.passive_point_multiplier_text.IsNullOrDestroyed()) { Content.Skills.SkillTree.passive_point_multiplier_text.text = multiplier + "x"; }
+                                            Mods.Skills.Passives_Points.Apply();
+                                            break;
+                                        }
 
                                     case "Slider_MaximumCompanions": { Save_Manager.instance.data.Skills.Companion.Limit = (int)__0; break; }
                                     case "Slider_Wolf_SummonLimit": { Save_Manager.instance.data.Skills.Companion.Wolf.SummonLimit = (int)__0; break; }
@@ -1784,6 +1850,17 @@ namespace LastEpoch_Hud.Scripts
                                     if (!Data.weaver_points_slider.IsNullOrDestroyed()) { Data.weaver_points_slider.value = woven.TreePoints; }
                                     if (!Data.weaver_points_text.IsNullOrDestroyed()) { Data.weaver_points_text.text = woven.TreePoints.ToString(); }
                                     Data.suppressWeaverSlider = false;
+                                }
+                                SettingRow.AddMultiplier(character_data_content, "TreePoints", "TreePointMultiplier", "Toggle_Weaver_TreePoints", "Toggle_Weaver_PointMultiplier", "Slider_Weaver_TreePoints", "Slider_Weaver_PointMultiplier", "Weaver Point Multiplier");
+                                Data.weaver_multiplier_toggle = Functions.Get_ToggleInPanel(character_data_content, "TreePointMultiplier", "Toggle_Weaver_PointMultiplier");
+                                Data.weaver_multiplier_text = Functions.Get_TextInToggle(character_data_content, "TreePointMultiplier", "Toggle_Weaver_PointMultiplier", "Value");
+                                Data.weaver_multiplier_slider = Functions.Get_SliderInPanel(character_data_content, "TreePointMultiplier", "Slider_Weaver_PointMultiplier");
+                                if (!Save_Manager.instance.IsNullOrDestroyed())
+                                {
+                                    int multiplier = SettingRow.Clamp(Save_Manager.instance.data.Factions.TheWoven.PointMultiplier);
+                                    SettingRow.PrepareSlider(Data.weaver_multiplier_slider, multiplier);
+                                    if (!Data.weaver_multiplier_toggle.IsNullOrDestroyed()) { Data.weaver_multiplier_toggle.isOn = Save_Manager.instance.data.Factions.TheWoven.Enable_PointMultiplier; }
+                                    if (!Data.weaver_multiplier_text.IsNullOrDestroyed()) { Data.weaver_multiplier_text.text = multiplier + "x"; }
                                 }
 
                                 Data.monolith_stability_basic_go = Functions.GetChild(character_data_content, "Monolith_Stability_Basic");
@@ -2856,6 +2933,9 @@ namespace LastEpoch_Hud.Scripts
                     public static Toggle weaver_points_toggle = null;
                     public static Text weaver_points_text = null;
                     public static Slider weaver_points_slider = null;
+                    public static Toggle weaver_multiplier_toggle = null;
+                    public static Text weaver_multiplier_text = null;
+                    public static Slider weaver_multiplier_slider = null;
                     public static bool suppressWeaverSlider = false;
                     public static readonly System.Action<bool> weaver_points_toggle_Action = new System.Action<bool>(SetWeaverTreePointsEnabled);
                     public static void EnsureWeaverRange()
@@ -3458,6 +3538,15 @@ namespace LastEpoch_Hud.Scripts
 
                                 Pickup.autosell_hide_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "AutoSell_FromFilter", "Toggle_Items_Pickup_AutoSell_FromFilter");
 
+                                Pickup.autoshatter_fromfilter_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "AutoShatter_FromFilter", "Toggle_Items_Pickup_AutoShatter_FromFilter");
+                                Pickup.autoshatter_rune_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "AutoShatter_Rune", "Toggle_Items_Pickup_AutoShatter_Rune");
+                                Pickup.autoshatter_chance_slider = Functions.Get_SliderInPanel(items_pickup_content, "AutoShatter_Chance", "Slider_Items_Pickup_AutoShatter_Chance");
+                                Pickup.autoshatter_affix_slider = Functions.Get_SliderInPanel(items_pickup_content, "AutoShatter_AffixChance", "Slider_Items_Pickup_AutoShatter_AffixChance");
+                                Pickup.autoshatter_quantity_slider = Functions.Get_SliderInPanel(items_pickup_content, "AutoShatter_QuantityChance", "Slider_Items_Pickup_AutoShatter_QuantityChance");
+                                Pickup.autoshatter_chance_text = Pickup.PanelValueText(items_pickup_content, "AutoShatter_Chance");
+                                Pickup.autoshatter_affix_text = Pickup.PanelValueText(items_pickup_content, "AutoShatter_AffixChance");
+                                Pickup.autoshatter_quantity_text = Pickup.PanelValueText(items_pickup_content, "AutoShatter_QuantityChance");
+
                                 Pickup.range_pickup_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "Range_Pickup", "Toggle_Items_Pickup_Range_Pickup");
                                 Pickup.hide_materials_notifications_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "Hide_Notifications", "Toggle_Items_Pickup_Hide_Notifications");
 
@@ -3694,16 +3783,15 @@ namespace LastEpoch_Hud.Scripts
                             Pickup.autostore_materials_Timer_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoStore_Timer;
                             Pickup.autostore_materials_Timer_slider.value = Save_Manager.instance.data.Items.Pickup.AutoStore_Timer;
 
-                            Pickup.autosell_hide_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoSell_FromFilter;                            
+                            Pickup.autosell_hide_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoSell_FromFilter;
+                            if (!Pickup.autoshatter_fromfilter_toggle.IsNullOrDestroyed()) { Pickup.autoshatter_fromfilter_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_FromFilter; }
+                            if (!Pickup.autoshatter_rune_toggle.IsNullOrDestroyed()) { Pickup.autoshatter_rune_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_UseRune; }
+                            if (!Pickup.autoshatter_chance_slider.IsNullOrDestroyed()) { Pickup.autoshatter_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance; }
+                            if (!Pickup.autoshatter_affix_slider.IsNullOrDestroyed()) { Pickup.autoshatter_affix_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance; }
+                            if (!Pickup.autoshatter_quantity_slider.IsNullOrDestroyed()) { Pickup.autoshatter_quantity_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance; }
 
                             Pickup.range_pickup_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_RangePickup;
                             Pickup.hide_materials_notifications_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_HideMaterialsNotifications;
-
-                            if (!Pickup.auto_shatter_fromfilter_toggle.IsNullOrDestroyed()) { Pickup.auto_shatter_fromfilter_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_FromFilter; }
-                            if (!Pickup.auto_shatter_rune_toggle.IsNullOrDestroyed()) { Pickup.auto_shatter_rune_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_Rune; }
-                            if (!Pickup.auto_shatter_chance_slider.IsNullOrDestroyed()) { Pickup.auto_shatter_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance; }
-                            if (!Pickup.auto_shatter_affix_chance_slider.IsNullOrDestroyed()) { Pickup.auto_shatter_affix_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance; }
-                            if (!Pickup.auto_shatter_quantity_chance_slider.IsNullOrDestroyed()) { Pickup.auto_shatter_quantity_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance; }
 
                             //Requirements
                             Requirements.class_req_toggle.isOn = Save_Manager.instance.data.Items.Req.classe;
@@ -3807,6 +3895,9 @@ namespace LastEpoch_Hud.Scripts
                             CraftingSlot.legendary_potencial_text.text = "" + (int)(Save_Manager.instance.data.Items.CraftingSlot.LegendaryPotencial);
                             CraftingSlot.weaver_will_text.text = "" + (int)(Save_Manager.instance.data.Items.CraftingSlot.WeaverWill);
                             Pickup.autostore_materials_Timer_text.text = "All " + (int)Save_Manager.instance.data.Items.Pickup.AutoStore_Timer + " sec";
+                            if (!Pickup.autoshatter_chance_text.IsNullOrDestroyed()) { Pickup.autoshatter_chance_text.text = Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance + " %"; }
+                            if (!Pickup.autoshatter_affix_text.IsNullOrDestroyed()) { Pickup.autoshatter_affix_text.text = Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance + " %"; }
+                            if (!Pickup.autoshatter_quantity_text.IsNullOrDestroyed()) { Pickup.autoshatter_quantity_text.text = Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance + " %"; }
 
                             //Tiers
                             Drop.seal_tier_text.text = ((int)(Save_Manager.instance.data.Items.Drop.SealTier_Min) + 1) + " to " + ((int)(Save_Manager.instance.data.Items.Drop.SealTier_Max) + 1);
@@ -3921,6 +4012,22 @@ namespace LastEpoch_Hud.Scripts
                     public static Text autostore_materials_Timer_text = null;
                     public static Slider autostore_materials_Timer_slider = null;                    
                     public static Toggle autosell_hide_toggle = null;
+                    public static Toggle autoshatter_fromfilter_toggle = null;
+                    public static Toggle autoshatter_rune_toggle = null;
+                    public static Slider autoshatter_chance_slider = null;
+                    public static Slider autoshatter_affix_slider = null;
+                    public static Slider autoshatter_quantity_slider = null;
+                    public static Text autoshatter_chance_text = null;
+                    public static Text autoshatter_affix_text = null;
+                    public static Text autoshatter_quantity_text = null;
+                    public static Text PanelValueText(GameObject content, string panelName)
+                    {
+                        GameObject panel = Functions.GetChild(content, panelName);
+                        if (panel.IsNullOrDestroyed()) { return null; }
+                        GameObject valueObj = Functions.FindDescendant(panel, "Value");
+                        if (valueObj.IsNullOrDestroyed()) { return null; }
+                        return valueObj.GetComponent<Text>();
+                    }
                     public static Toggle range_pickup_toggle = null;
                     public static Toggle hide_materials_notifications_toggle = null;
 
@@ -4471,6 +4578,10 @@ namespace LastEpoch_Hud.Scripts
                             if (!scene_dungeons_content.IsNullOrDestroyed())
                             {
                                 Dungeons.enter_without_key_toggle = Functions.Get_ToggleInPanel(scene_dungeons_content, "EnterWithoutKey", "Toggle_Scenes_Dungeons_EnterWithoutKey");
+                                HideSceneTeleport(scene_dungeons_content, "Teleport_Dropdown");
+                                HideSceneTeleport(scene_dungeons_content, "Border (1)");
+                                HideSceneTeleport(scene_dungeons_content, "Teleport_Btn");
+                                HideSceneTeleport(scene_dungeons_content, "Border (2)");
                             }
                             GameObject scene_minimap_content = Functions.GetViewportContent(content_obj, "Center", "Scenes_Minimap_Content");
                             if (!scene_minimap_content.IsNullOrDestroyed())
@@ -4711,6 +4822,11 @@ namespace LastEpoch_Hud.Scripts
                 {
                     public static Toggle enter_without_key_toggle = null;
                 }
+                static void HideSceneTeleport(GameObject content, string child_name)
+                {
+                    GameObject child = Functions.GetChild(content, child_name);
+                    if (!child.IsNullOrDestroyed()) { child.SetActive(false); }
+                }
                 public class Monoliths
                 {
                     public static Toggle max_stability_toggle = null;
@@ -4838,6 +4954,16 @@ namespace LastEpoch_Hud.Scripts
                                 SkillTree.enable_passive_points_toggle = Functions.Get_ToggleInPanel(skills_content, "PassivePoints", "Toggle_PassivePoints");
                                 SkillTree.passive_points_text = Functions.Get_TextInToggle(skills_content, "PassivePoints", "Toggle_PassivePoints", "Value");
                                 SkillTree.passive_points_slider = Functions.Get_SliderInPanel(skills_content, "PassivePoints", "Slider_PassivePoints");
+
+                                SettingRow.AddMultiplier(skills_content, "SkillLevel", "SkillLevelMultiplier", "Toggle_SkillLevel", "Toggle_SkillLevelMultiplier", "Slider_SkillLevel", "Slider_SkillLevelMultiplier", "Skill Point Multiplier");
+                                SkillTree.enable_skill_level_multiplier_toggle = Functions.Get_ToggleInPanel(skills_content, "SkillLevelMultiplier", "Toggle_SkillLevelMultiplier");
+                                SkillTree.skill_level_multiplier_text = Functions.Get_TextInToggle(skills_content, "SkillLevelMultiplier", "Toggle_SkillLevelMultiplier", "Value");
+                                SkillTree.skill_level_multiplier_slider = Functions.Get_SliderInPanel(skills_content, "SkillLevelMultiplier", "Slider_SkillLevelMultiplier");
+
+                                SettingRow.AddMultiplier(skills_content, "PassivePoints", "PassivePointMultiplier", "Toggle_PassivePoints", "Toggle_PassivePointMultiplier", "Slider_PassivePoints", "Slider_PassivePointMultiplier", "Passive Point Multiplier Per Level");
+                                SkillTree.enable_passive_point_multiplier_toggle = Functions.Get_ToggleInPanel(skills_content, "PassivePointMultiplier", "Toggle_PassivePointMultiplier");
+                                SkillTree.passive_point_multiplier_text = Functions.Get_TextInToggle(skills_content, "PassivePointMultiplier", "Toggle_PassivePointMultiplier", "Value");
+                                SkillTree.passive_point_multiplier_slider = Functions.Get_SliderInPanel(skills_content, "PassivePointMultiplier", "Slider_PassivePointMultiplier");
 
                                 SkillTree.enable_movement_no_target_toggle = Functions.Get_ToggleInPanel(skills_content, "NoTarget", "Toggle_NoTarget");
                                 SkillTree.enable_movement_immune_toggle = Functions.Get_ToggleInPanel(skills_content, "ImmuneDuringMovement", "Toggle_ImmuneDuringMovement");
@@ -5067,6 +5193,21 @@ namespace LastEpoch_Hud.Scripts
                             SkillTree.enable_passive_points_toggle.isOn = Save_Manager.instance.data.Skills.Enable_PassivePoints;
                             SkillTree.passive_points_slider.value = Save_Manager.instance.data.Skills.PassivePoints;
 
+                            if (!SkillTree.skill_level_multiplier_slider.IsNullOrDestroyed())
+                            {
+                                int skill_multiplier = SettingRow.Clamp(Save_Manager.instance.data.Skills.SkillLevelMultiplier);
+                                SettingRow.PrepareSlider(SkillTree.skill_level_multiplier_slider, skill_multiplier);
+                                if (!SkillTree.enable_skill_level_multiplier_toggle.IsNullOrDestroyed()) { SkillTree.enable_skill_level_multiplier_toggle.isOn = Save_Manager.instance.data.Skills.Enable_SkillLevelMultiplier; }
+                                if (!SkillTree.skill_level_multiplier_text.IsNullOrDestroyed()) { SkillTree.skill_level_multiplier_text.text = skill_multiplier + "x"; }
+                            }
+                            if (!SkillTree.passive_point_multiplier_slider.IsNullOrDestroyed())
+                            {
+                                int passive_multiplier = SettingRow.Clamp(Save_Manager.instance.data.Skills.PassivePointMultiplier);
+                                SettingRow.PrepareSlider(SkillTree.passive_point_multiplier_slider, passive_multiplier);
+                                if (!SkillTree.enable_passive_point_multiplier_toggle.IsNullOrDestroyed()) { SkillTree.enable_passive_point_multiplier_toggle.isOn = Save_Manager.instance.data.Skills.Enable_PassivePointMultiplier; }
+                                if (!SkillTree.passive_point_multiplier_text.IsNullOrDestroyed()) { SkillTree.passive_point_multiplier_text.text = passive_multiplier + "x"; }
+                            }
+
                             SkillTree.enable_movement_no_target_toggle.isOn = Save_Manager.instance.data.Skills.MovementSkills.Enable_NoTarget;
                             SkillTree.enable_movement_immune_toggle.isOn = Save_Manager.instance.data.Skills.MovementSkills.Enable_ImmuneDuringMovement;
                             SkillTree.enable_movement_simple_path_toggle.isOn = Save_Manager.instance.data.Skills.MovementSkills.Disable_SimplePath;
@@ -5211,6 +5352,8 @@ namespace LastEpoch_Hud.Scripts
                             SkillTree.specialization_slots_text.text = "" + (int)Save_Manager.instance.data.Skills.SpecializationSlots;
                             SkillTree.skill_level_text.text = "" + (int)Save_Manager.instance.data.Skills.SkillLevel;
                             SkillTree.passive_points_text.text = "" + (int)Save_Manager.instance.data.Skills.PassivePoints;
+                            if (!SkillTree.skill_level_multiplier_text.IsNullOrDestroyed()) { SkillTree.skill_level_multiplier_text.text = SettingRow.Clamp(Save_Manager.instance.data.Skills.SkillLevelMultiplier) + "x"; }
+                            if (!SkillTree.passive_point_multiplier_text.IsNullOrDestroyed()) { SkillTree.passive_point_multiplier_text.text = SettingRow.Clamp(Save_Manager.instance.data.Skills.PassivePointMultiplier) + "x"; }
 
                             Companions.maximum_companions_text.text = "" + (int)Save_Manager.instance.data.Skills.Companion.Limit;
                             Companions.wolf_summon_limit_text.text = "" + (int)Save_Manager.instance.data.Skills.Companion.Wolf.SummonLimit;
@@ -5271,6 +5414,14 @@ namespace LastEpoch_Hud.Scripts
                     public static Toggle enable_passive_points_toggle = null;
                     public static Text passive_points_text = null;
                     public static Slider passive_points_slider = null;
+
+                    public static Toggle enable_skill_level_multiplier_toggle = null;
+                    public static Text skill_level_multiplier_text = null;
+                    public static Slider skill_level_multiplier_slider = null;
+
+                    public static Toggle enable_passive_point_multiplier_toggle = null;
+                    public static Text passive_point_multiplier_text = null;
+                    public static Slider passive_point_multiplier_slider = null;
 
                     public static Toggle enable_movement_no_target_toggle = null;
                     public static Toggle enable_movement_immune_toggle = null;
@@ -7054,7 +7205,10 @@ public static void SetShardsView(int affix_number, bool seal)
                                 item.SetAsCorrupted();
                             }
                             item.RefreshIDAndValues(); //Refresh item for implicits, unique mods, and the saved id
-                            if ((item_type < 100) && (ra < 7)) { item.forgingPotential = fg; }
+                            if ((item_type < 100) && (ra < 7))
+                            {
+                                Mods.Items.Items_Drop_ForginPotencial.Stamp(item, fg);
+                            }
                             
                             Refs_Manager.ground_item_manager.dropItemForPlayer(Refs_Manager.player_actor, item.TryCast<ItemData>(), Refs_Manager.player_actor.position(), false);
                         }

@@ -33,7 +33,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
                         {
                             if (Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial)
                             {
-                                item.forgingPotential = (byte)Save_Manager.instance.data.Items.CraftingSlot.ForginPotencial;
+                                Items_Drop_ForginPotencial.Keep(item, (byte)Save_Manager.instance.data.Items.CraftingSlot.ForginPotencial);
                             }
 
                             System.Collections.Generic.List<bool> implicits_enables = new System.Collections.Generic.List<bool>();

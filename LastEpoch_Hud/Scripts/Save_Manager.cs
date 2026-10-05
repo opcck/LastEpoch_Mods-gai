@@ -57,6 +57,14 @@ namespace LastEpoch_Hud.Scripts
                 Save();
             }
             Check_Update();
+            if (!data.Items.Pickup.AutoShatter_Configured)
+            {
+                data.Items.Pickup.AutoShatter_Chance = 100;
+                data.Items.Pickup.AutoShatter_AffixChance = 100;
+                data.Items.Pickup.AutoShatter_QuantityChance = 0;
+                data.Items.Pickup.AutoShatter_Configured = true;
+                Save();
+            }
             data_duplicate = data; //Use to check for data changed
             Main.logger_instance?.Msg("Save Manager : Data initialized");
             initialized = true;
@@ -210,10 +218,11 @@ namespace LastEpoch_Hud.Scripts
                         AutoStore_Timer = 10,
                         Enable_AutoSell_FromFilter = false,
                         Enable_AutoShatter_FromFilter = false,
-                        Enable_AutoShatter_Rune = false,
-                        AutoShatter_Chance = 100f,
-                        AutoShatter_AffixChance = 100f,
-                        AutoShatter_QuantityChance = 100f,
+                        Enable_AutoShatter_UseRune = false,
+                        AutoShatter_Chance = 100,
+                        AutoShatter_AffixChance = 100,
+                        AutoShatter_QuantityChance = 0,
+                        AutoShatter_Configured = true,
                         Enable_RangePickup = false,
                         Enable_HideMaterialsNotifications = false
                     },
@@ -309,6 +318,8 @@ namespace LastEpoch_Hud.Scripts
                     {
                         Enable_TreePoints = false,
                         TreePoints = 0,
+                        Enable_PointMultiplier = false,
+                        PointMultiplier = 2,
                         Enable_FreeRespe = false
                     }
                 },
@@ -338,10 +349,7 @@ namespace LastEpoch_Hud.Scripts
                     Minimap =
                     {
                         Enable_MaxZoomOut = false,
-                        Enable_RemoveFogOfWar = false,
-                        Enable_ShowAllItems = false,
-                        Enable_ShowItemsFromFilter = false,
-                        Icons_Scale = 1f
+                        Enable_RemoveFogOfWar = false
                     },
                     Dungeons =
                     {
@@ -404,8 +412,12 @@ namespace LastEpoch_Hud.Scripts
                         Enable_SpecializationSlots = false,
                         Enable_SkillLevel = false,
                         SkillLevel = 0,
+                        Enable_SkillLevelMultiplier = false,
+                        SkillLevelMultiplier = 2,
                         Enable_PassivePoints = false,
                         PassivePoints = 0,
+                        Enable_PassivePointMultiplier = false,
+                        PassivePointMultiplier = 2,
                         SpecializationSlots = 0,
                         MovementSkills =
                         {
@@ -551,9 +563,6 @@ namespace LastEpoch_Hud.Scripts
             if (data.Scenes.Difficulty.EnemyHealthMult <= 0.01f) { data.Scenes.Difficulty.EnemyHealthMult = 1.0f; data_changed = true; }
             if (data.Scenes.Difficulty.EnemyDamageMult <= 0.01f) { data.Scenes.Difficulty.EnemyDamageMult = 1.0f; data_changed = true; }
             if (data.Scenes.Difficulty.EnemySpeedMult <= 0.01f) { data.Scenes.Difficulty.EnemySpeedMult = 1.0f; data_changed = true; }
-            if (data.Items.Pickup.AutoShatter_Chance <= 0.01f) { data.Items.Pickup.AutoShatter_Chance = 100f; data_changed = true; }
-            if (data.Items.Pickup.AutoShatter_AffixChance <= 0.01f) { data.Items.Pickup.AutoShatter_AffixChance = 100f; data_changed = true; }
-            if (data.Items.Pickup.AutoShatter_QuantityChance <= 0.01f) { data.Items.Pickup.AutoShatter_QuantityChance = 100f; data_changed = true; }
 
             if (data.ModVersion != Main.mod_version)
             {
@@ -780,10 +789,11 @@ namespace LastEpoch_Hud.Scripts
                 public bool Enable_AutoSell_FromFilter;
 
                 public bool Enable_AutoShatter_FromFilter;
-                public bool Enable_AutoShatter_Rune;
-                public float AutoShatter_Chance;
-                public float AutoShatter_AffixChance;
-                public float AutoShatter_QuantityChance;
+                public bool Enable_AutoShatter_UseRune;
+                public int AutoShatter_Chance;
+                public int AutoShatter_AffixChance;
+                public int AutoShatter_QuantityChance;
+                public bool AutoShatter_Configured;
 
                 public bool Enable_RangePickup;
                 public bool Enable_HideMaterialsNotifications;
@@ -895,6 +905,8 @@ namespace LastEpoch_Hud.Scripts
             {
                 public bool Enable_TreePoints;
                 public int TreePoints;
+                public bool Enable_PointMultiplier;
+                public int PointMultiplier;
                 public bool Enable_FreeRespe;
             }
 
@@ -957,9 +969,6 @@ namespace LastEpoch_Hud.Scripts
             {
                 public bool Enable_MaxZoomOut;
                 public bool Enable_RemoveFogOfWar;
-                public bool Enable_ShowAllItems;
-                public bool Enable_ShowItemsFromFilter;
-                public float Icons_Scale;
             }
             public struct Monoliths
             {
@@ -1017,9 +1026,13 @@ namespace LastEpoch_Hud.Scripts
 
                 public bool Enable_SkillLevel;
                 public float SkillLevel;
+                public bool Enable_SkillLevelMultiplier;
+                public float SkillLevelMultiplier;
 
                 public bool Enable_PassivePoints;
                 public float PassivePoints;
+                public bool Enable_PassivePointMultiplier;
+                public float PassivePointMultiplier;
 
                 public MovementSkills MovementSkills;
                 public SkillTree SkillTree;
