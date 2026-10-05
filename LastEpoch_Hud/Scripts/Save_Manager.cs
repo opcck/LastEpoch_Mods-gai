@@ -1,4 +1,4 @@
-﻿using MelonLoader;
+using MelonLoader;
 using Newtonsoft.Json;
 using System.IO;
 using UnityEngine;
@@ -209,6 +209,11 @@ namespace LastEpoch_Hud.Scripts
                         Enable_AutoStore_Timer = false,
                         AutoStore_Timer = 10,
                         Enable_AutoSell_FromFilter = false,
+                        Enable_AutoShatter_FromFilter = false,
+                        Enable_AutoShatter_Rune = false,
+                        AutoShatter_Chance = 100f,
+                        AutoShatter_AffixChance = 100f,
+                        AutoShatter_QuantityChance = 100f,
                         Enable_RangePickup = false,
                         Enable_HideMaterialsNotifications = false
                     },
@@ -373,6 +378,18 @@ namespace LastEpoch_Hud.Scripts
                             Spirits_Of_Fire = 0
                         },
                         Enable_Islands = false
+                    },
+                    Difficulty =
+                    {
+                        Enable_EnemyHealthMult = false,
+                        EnemyHealthMult = 1.0f,
+                        Enable_EnemyDamageMult = false,
+                        EnemyDamageMult = 1.0f,
+                        Enable_EnemySpeedMult = false,
+                        EnemySpeedMult = 1.0f,
+                        Enable_ScaleZoneToPlayer = false,
+                        Enable_CapLevelToZone = false,
+                        ForceMonsterRarity = 0
                     }
                 },
                 Skills =
@@ -511,6 +528,17 @@ namespace LastEpoch_Hud.Scripts
                                 Enable_ReduceDecay = false,
                                 decay = 0
                             }
+                        },
+                        AutoCast =
+                        {
+                            DisableInNonCombatZone = false,
+                            PauseOnZoneChange = false
+                        },
+                        Summon =
+                        {
+                            Enable_GodMode = false,
+                            Enable_Forever = false,
+                            Enable_DontCollide = false
                         }
                 }
             };
@@ -520,6 +548,13 @@ namespace LastEpoch_Hud.Scripts
         void Check_Update()
         {
             bool data_changed = false;
+            if (data.Scenes.Difficulty.EnemyHealthMult <= 0.01f) { data.Scenes.Difficulty.EnemyHealthMult = 1.0f; data_changed = true; }
+            if (data.Scenes.Difficulty.EnemyDamageMult <= 0.01f) { data.Scenes.Difficulty.EnemyDamageMult = 1.0f; data_changed = true; }
+            if (data.Scenes.Difficulty.EnemySpeedMult <= 0.01f) { data.Scenes.Difficulty.EnemySpeedMult = 1.0f; data_changed = true; }
+            if (data.Items.Pickup.AutoShatter_Chance <= 0.01f) { data.Items.Pickup.AutoShatter_Chance = 100f; data_changed = true; }
+            if (data.Items.Pickup.AutoShatter_AffixChance <= 0.01f) { data.Items.Pickup.AutoShatter_AffixChance = 100f; data_changed = true; }
+            if (data.Items.Pickup.AutoShatter_QuantityChance <= 0.01f) { data.Items.Pickup.AutoShatter_QuantityChance = 100f; data_changed = true; }
+
             if (data.ModVersion != Main.mod_version)
             {
                 //Update save when mod update here
@@ -744,6 +779,12 @@ namespace LastEpoch_Hud.Scripts
 
                 public bool Enable_AutoSell_FromFilter;
 
+                public bool Enable_AutoShatter_FromFilter;
+                public bool Enable_AutoShatter_Rune;
+                public float AutoShatter_Chance;
+                public float AutoShatter_AffixChance;
+                public float AutoShatter_QuantityChance;
+
                 public bool Enable_RangePickup;
                 public bool Enable_HideMaterialsNotifications;
             }
@@ -864,6 +905,19 @@ namespace LastEpoch_Hud.Scripts
                 public Dungeons Dungeons;
                 public Minimap Minimap;
                 public Monoliths Monoliths;
+                public Difficulty Difficulty;
+            }
+            public struct Difficulty
+            {
+                public bool Enable_EnemyHealthMult;
+                public float EnemyHealthMult;
+                public bool Enable_EnemyDamageMult;
+                public float EnemyDamageMult;
+                public bool Enable_EnemySpeedMult;
+                public float EnemySpeedMult;
+                public bool Enable_ScaleZoneToPlayer;
+                public bool Enable_CapLevelToZone;
+                public int ForceMonsterRarity; // 0: Off, 1: Magic, 2: Rare
             }
             public struct Camera
             {
@@ -972,6 +1026,19 @@ namespace LastEpoch_Hud.Scripts
                 public PassiveTree PassiveTree;
                 public Companion Companion;
                 public Minions Minions;
+                public AutoCast AutoCast;
+                public Summon_Structure Summon;
+            }
+            public struct Summon_Structure
+            {
+                public bool Enable_GodMode;
+                public bool Enable_Forever;
+                public bool Enable_DontCollide;
+            }
+            public struct AutoCast
+            {
+                public bool DisableInNonCombatZone;
+                public bool PauseOnZoneChange;
             }
             public struct MovementSkills
             {

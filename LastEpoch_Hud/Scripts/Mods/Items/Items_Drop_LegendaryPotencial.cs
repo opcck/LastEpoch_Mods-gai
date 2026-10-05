@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using UnityEngine;
 using Il2Cpp;
 
@@ -20,21 +20,27 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
             else { return false; }
         }
 
-        [HarmonyPatch(typeof(ItemData), "rollLegendaryPotential")]
-        public class rollLegendaryPotential
+        [HarmonyPatch(typeof(ItemDataUnpacked), nameof(ItemDataUnpacked.RollLegendaryPotential))]
+        public class RollLegendaryPotential
         {
             [HarmonyPrefix]
-            static bool Prefix(ref ItemData __instance, ref int __result, UniqueList.Entry __0, int __1, int __2)
+            static bool Prefix(ref int __result)
             {
                 if (CanRun())
                 {
                     int roll = 0;
-                    if (Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Min == Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max) { roll = (int)Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max; }
-                    else { roll = (int)Random.RandomRange(Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Min, Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max); }
+                    if (Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Min == Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max)
+                    {
+                        roll = (int)Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max;
+                    }
+                    else
+                    {
+                        roll = (int)Random.Range((int)Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Min, (int)Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max + 1);
+                    }
                     __result = roll;
                     return false;
                 }
-                else { return true; };
+                return true;
             }
         }
     }

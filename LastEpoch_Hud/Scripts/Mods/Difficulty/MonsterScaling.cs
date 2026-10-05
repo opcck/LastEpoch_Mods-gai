@@ -13,6 +13,22 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
 
         private static void ResetAll()
         {
+            if (Save_Manager.instance != null && Save_Manager.instance.initialized)
+            {
+                Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyHealthMult = false;
+                Save_Manager.instance.data.Scenes.Difficulty.EnemyHealthMult = 1.0f;
+                Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyDamageMult = false;
+                Save_Manager.instance.data.Scenes.Difficulty.EnemyDamageMult = 1.0f;
+                Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemySpeedMult = false;
+                Save_Manager.instance.data.Scenes.Difficulty.EnemySpeedMult = 1.0f;
+                Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 0;
+                Save_Manager.instance.data.Scenes.Difficulty.Enable_ScaleZoneToPlayer = false;
+                Save_Manager.instance.data.Scenes.Difficulty.Enable_CapLevelToZone = false;
+                Save_Manager.instance.Save();
+                Hud_Manager.Content.Scenes.Difficulty.Init_UserData_UI();
+                Hud_Manager.Content.Scenes.UpdateVisuals();
+            }
+
             ModSettings.Difficulty.EnemyHealthMult.SetEnabled(false);
             ModSettings.Difficulty.EnemyHealthMult.SetValue(1.0f);
             ModSettings.Difficulty.EnemyDamageMult.SetEnabled(false);
@@ -24,8 +40,38 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
             ModSettings.Difficulty.CapLevelToZone.Set(false);
         }
 
+        private static bool HasDifficultyData => Save_Manager.instance != null && Save_Manager.instance.initialized;
+
+        private static bool EnemyHealthMultEnabled => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyHealthMult
+            : ModSettings.Difficulty.EnemyHealthMult.Enabled;
+
+        private static float EnemyHealthMultValue => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.EnemyHealthMult
+            : ModSettings.Difficulty.EnemyHealthMult.Value;
+
+        private static bool EnemyDamageMultEnabled => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyDamageMult
+            : ModSettings.Difficulty.EnemyDamageMult.Enabled;
+
+        private static float EnemyDamageMultValue => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.EnemyDamageMult
+            : ModSettings.Difficulty.EnemyDamageMult.Value;
+
+        private static bool EnemySpeedMultEnabled => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemySpeedMult
+            : ModSettings.Difficulty.EnemySpeedMult.Enabled;
+
+        private static float EnemySpeedMultValue => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.EnemySpeedMult
+            : ModSettings.Difficulty.EnemySpeedMult.Value;
+
         private static int GetForceRarity()
         {
+            if (HasDifficultyData)
+            {
+                return Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity;
+            }
             var radio = ModSettings.Difficulty.ForceMonsterRarity;
             if (radio.IsSelected(2))
                 return 2; // Rare
@@ -85,12 +131,12 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
                 {
                     if (!Scenes.IsGameScene())
                         return;
-                    if (!ModSettings.Difficulty.EnemyHealthMult.Enabled)
+                    if (!EnemyHealthMultEnabled)
                         return;
                     if (!IsEnemy(__instance.actor))
                         return;
 
-                    __result *= ModSettings.Difficulty.EnemyHealthMult.Value;
+                    __result *= EnemyHealthMultValue;
                 }
                 catch { }
             }
@@ -130,14 +176,14 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
 
         private static void ApplyDamageBuff(Actor actor)
         {
-            if (!ModSettings.Difficulty.EnemyDamageMult.Enabled)
+            if (!EnemyDamageMultEnabled)
                 return;
             actor.statBuffs.addBuff(
                 float.MaxValue,
                 SP.Damage,
                 0f,
                 0f,
-                MoreList(ModSettings.Difficulty.EnemyDamageMult.Value),
+                MoreList(EnemyDamageMultValue),
                 AT.None,
                 0,
                 0,
@@ -147,9 +193,9 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
 
         private static void ApplySpeedBuff(Actor actor)
         {
-            if (!ModSettings.Difficulty.EnemySpeedMult.Enabled)
+            if (!EnemySpeedMultEnabled)
                 return;
-            var more = MoreList(ModSettings.Difficulty.EnemySpeedMult.Value);
+            var more = MoreList(EnemySpeedMultValue);
             actor.statBuffs.addBuff(
                 float.MaxValue,
                 SP.AttackSpeed,

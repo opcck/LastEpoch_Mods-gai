@@ -1,4 +1,4 @@
-﻿using MelonLoader;
+using MelonLoader;
 using UnityEngine;
 
 namespace LastEpoch_Hud.Scripts.Mods.Character
@@ -19,8 +19,14 @@ namespace LastEpoch_Hud.Scripts.Mods.Character
         {
             if (CanRun())
             {
-                if (Refs_Manager.player_treedata.chosenMastery > 0) { Hud_Manager.Content.Character.Cheats.masterie_text.text = reset_masterie; }
-                else { Hud_Manager.Content.Character.Cheats.masterie_text.text = choose_masterie; }
+                if (Refs_Manager.player_treedata.chosenMastery > 0)
+                {
+                    Hud_Manager.Content.Character.Cheats.masterie_text.text = Hud_Manager.LocalizeText(reset_masterie);
+                }
+                else
+                {
+                    Hud_Manager.Content.Character.Cheats.masterie_text.text = Hud_Manager.LocalizeText(choose_masterie);
+                }
             }
         }
         
@@ -28,8 +34,8 @@ namespace LastEpoch_Hud.Scripts.Mods.Character
         {
             if (CanRun())
             {
-                if (Hud_Manager.Content.Character.Cheats.masterie_text.text == reset_masterie) { ResetMasterie(); }
-                else if (Hud_Manager.Content.Character.Cheats.masterie_text.text == choose_masterie) { ChooseMasterie(); }
+                if (Refs_Manager.player_treedata.chosenMastery > 0) { ResetMasterie(); }
+                else { ChooseMasterie(); }
             }
         }
         private static void ResetMasterie()
@@ -39,7 +45,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Character
                 Refs_Manager.player_treedata.chosenMastery = 0;
                 Refs_Manager.player_data_tracker.charData.ChosenMastery = 0;
                 Refs_Manager.player_data_tracker.charData.SaveData();
-                Hud_Manager.Content.Character.Cheats.masterie_text.text = choose_masterie;
+                Hud_Manager.Content.Character.Cheats.masterie_text.text = Hud_Manager.LocalizeText(choose_masterie);
             }
         }
         private static void ChooseMasterie()

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using HarmonyLib;
 using Il2Cpp;
 using MelonLoader;
@@ -217,8 +217,14 @@ namespace LastEpoch_Hud.Scripts.Mods.Skills
                     skills[i].autocastOn = stored[i];
         }
 
-        static bool GateOn => ModSettings.SkillsAutoCast.DisableInNonCombatZone.Value;
-        static bool PauseOnZoneChangeOn => ModSettings.SkillsAutoCast.PauseOnZoneChange.Value;
+        static bool HasAutoCastData => Save_Manager.instance != null && Save_Manager.instance.initialized;
+
+        static bool GateOn => HasAutoCastData
+            ? Save_Manager.instance.data.Skills.AutoCast.DisableInNonCombatZone
+            : ModSettings.SkillsAutoCast.DisableInNonCombatZone.Value;
+        static bool PauseOnZoneChangeOn => HasAutoCastData
+            ? Save_Manager.instance.data.Skills.AutoCast.PauseOnZoneChange
+            : ModSettings.SkillsAutoCast.PauseOnZoneChange.Value;
 
         static bool InNonCombatZone()
         {

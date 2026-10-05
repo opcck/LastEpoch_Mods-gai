@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppLE.Data;
 using Il2CppRewired.Components;
@@ -223,6 +223,14 @@ namespace LastEpoch_Hud.Scripts
                 else { Main.logger_instance.Error("Hud Manager : Shard Prefab name not found"); }
             }
 
+            if (!hud_object.IsNullOrDestroyed())
+            {
+                foreach (var t in hud_object.GetComponentsInChildren<Toggle>(true))
+                {
+                    Events.StyleToggle(t);
+                }
+            }
+
             hud_initializing = false;
         }
         void SafeInit(string name, System.Action action)
@@ -352,31 +360,41 @@ namespace LastEpoch_Hud.Scripts
                 }*/
             }
         }
+        public static string LocalizeText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            if (Locales.current_dictionary != null)
+            {
+                if (Locales.current_dictionary.TryGetValue(text, out var translated) && !string.IsNullOrEmpty(translated))
+                    return translated;
+                string trimmed = text.Trim();
+                if (Locales.current_dictionary.TryGetValue(trimmed, out var trimmedTrans) && !string.IsNullOrEmpty(trimmedTrans))
+                    return trimmedTrans;
+            }
+            return text;
+        }
+
         void ReplaceText(GameObject go)
         {
             try
             {
+                if (go.IsNullOrDestroyed()) return;
                 Text label = go.GetComponent<Text>();
-                if (!label.IsNullOrDestroyed())
+                if (!label.IsNullOrDestroyed() && !string.IsNullOrEmpty(label.text))
                 {
-                    bool ignore = false;
-                    foreach (char c in label.text)
+                    // 1. 字典优先匹配：只要字典里有，不管是否包含数字或符号，一律直接翻译！
+                    if (Locales.current_dictionary != null)
                     {
-                        if (Locales.igrone_str.Contains(c)) { ignore = true; break; }
-                    }
-                    if (!ignore)
-                    {
-                        /*if (Locales.debug_text)
+                        if (Locales.current_dictionary.ContainsKey(label.text))
                         {
-                            //string s = "\"" + label.text + "\": \"\", ";
-                            string s = "\"" + label.text + "\": \"" + label.text + "\", "; //generate default en.json
-                            if (!Locales.debug_json.Contains(s)) { Locales.debug_json.Add(s); }
-                        }*/
-
-                        if (Locales.current_dictionary != null)
+                            label.text = Locales.current_dictionary[label.text];
+                            return;
+                        }
+                        string trimmed = label.text.Trim();
+                        if (Locales.current_dictionary.ContainsKey(trimmed))
                         {
-                            if (Locales.current_dictionary.ContainsKey(label.text)) { label.text = Locales.current_dictionary[label.text]; }
-                            //else { Main.logger_instance.Error(label.text + ", not found in dictionnary"); }
+                            label.text = Locales.current_dictionary[trimmed];
+                            return;
                         }
                     }
                 }
@@ -684,6 +702,9 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Items_Pickup_Range_Pickup": { Save_Manager.instance.data.Items.Pickup.Enable_RangePickup = __instance.isOn; break; }
                                     case "Toggle_Items_Pickup_Hide_Notifications": { Save_Manager.instance.data.Items.Pickup.Enable_HideMaterialsNotifications = __instance.isOn; break; }
 
+                                    case "Toggle_Items_Pickup_AutoShatter_FromFilter": { Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_FromFilter = __instance.isOn; break; }
+                                    case "Toggle_Items_Pickup_AutoShatter_Rune": { Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_Rune = __instance.isOn; break; }
+
                                     case "Toggle_Items_Craft_Enable": { Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod = __instance.isOn; break; }
                                     case "Toggle_Items_Craft_ForginPotencial": { Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial = __instance.isOn; break; }
                                     case "Toggle_Items_Craft_Implicit0": { Save_Manager.instance.data.Items.CraftingSlot.Enable_Implicit_0 = __instance.isOn; break; }
@@ -734,7 +755,7 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Scenes_Dungeons_EnterWithoutKey": { Save_Manager.instance.data.Scenes.Dungeons.Enable_EnterWithoutKey = __instance.isOn; break; }
 
                                     case "Toggle_Scenes_Minimap_MaxZoomOut": { Save_Manager.instance.data.Scenes.Minimap.Enable_MaxZoomOut = __instance.isOn; break; }
-                                    case "Toggle_Scenes_Minimap_RemoveFogOfWar": { Save_Manager.instance.data.Scenes.Minimap.Enable_RemoveFogOfWar = __instance.isOn; break; }
+                                    case "Toggle_Scenes_Minimap_RemoveFogOfWar": { Save_Manager.instance.data.Scenes.Minimap.Enable_RemoveFogOfWar = __instance.isOn; if (__instance.isOn) { Mods.Minimap.Minimap_FogOfWar.RevealAllNow(); } break; }
 
                                     case "Toggle_Scenes_Monoliths_MaxStability": { Save_Manager.instance.data.Scenes.Monoliths.Enable_MaxStability = __instance.isOn; break; }
                                     case "Toggle_Scenes_Monoliths_MobsDensity": { Save_Manager.instance.data.Scenes.Monoliths.Enable_MobsDensity = __instance.isOn; break; }
@@ -745,6 +766,46 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Scenes_Monoliths_ObjectiveReveal": { Save_Manager.instance.data.Scenes.Monoliths.Enable_ObjectiveReveal = __instance.isOn; break; }
                                     case "Toggle_Scenes_Monoliths_CompleteObjective": { Save_Manager.instance.data.Scenes.Monoliths.Enable_CompleteObjective = __instance.isOn; break; }
                                     case "Toggle_Scenes_Monoliths_NoLostWhenDie": { Save_Manager.instance.data.Scenes.Monoliths.Enable_NoLostWhenDie = __instance.isOn; break; }
+
+                                    case "Toggle_Scenes_Difficulty_EnemyHealthMult": { Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyHealthMult = __instance.isOn; break; }
+                                    case "Toggle_Scenes_Difficulty_EnemyDamageMult": { Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyDamageMult = __instance.isOn; break; }
+                                    case "Toggle_Scenes_Difficulty_EnemySpeedMult": { Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemySpeedMult = __instance.isOn; break; }
+                                    case "Toggle_Scenes_Difficulty_ScaleZoneToPlayer": { Save_Manager.instance.data.Scenes.Difficulty.Enable_ScaleZoneToPlayer = __instance.isOn; break; }
+                                    case "Toggle_Scenes_Difficulty_CapLevelToZone": { Save_Manager.instance.data.Scenes.Difficulty.Enable_CapLevelToZone = __instance.isOn; break; }
+                                    case "Toggle_Scenes_Difficulty_Off":
+                                        if (__instance.isOn)
+                                        {
+                                            Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 0;
+                                            if (!Content.Scenes.Difficulty.force_rarity_magic_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_magic_toggle.isOn = false;
+                                            if (!Content.Scenes.Difficulty.force_rarity_rare_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_rare_toggle.isOn = false;
+                                        }
+                                        break;
+                                    case "Toggle_Scenes_Difficulty_Magic":
+                                        if (__instance.isOn)
+                                        {
+                                            Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 1;
+                                            if (!Content.Scenes.Difficulty.force_rarity_off_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_off_toggle.isOn = false;
+                                            if (!Content.Scenes.Difficulty.force_rarity_rare_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_rare_toggle.isOn = false;
+                                        }
+                                        else if (Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity == 1)
+                                        {
+                                            Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 0;
+                                            if (!Content.Scenes.Difficulty.force_rarity_off_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_off_toggle.isOn = true;
+                                        }
+                                        break;
+                                    case "Toggle_Scenes_Difficulty_Rare":
+                                        if (__instance.isOn)
+                                        {
+                                            Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 2;
+                                            if (!Content.Scenes.Difficulty.force_rarity_off_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_off_toggle.isOn = false;
+                                            if (!Content.Scenes.Difficulty.force_rarity_magic_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_magic_toggle.isOn = false;
+                                        }
+                                        else if (Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity == 2)
+                                        {
+                                            Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 0;
+                                            if (!Content.Scenes.Difficulty.force_rarity_off_toggle.IsNullOrDestroyed()) Content.Scenes.Difficulty.force_rarity_off_toggle.isOn = true;
+                                        }
+                                        break;
                                 }
                             }
                             else
@@ -752,6 +813,11 @@ namespace LastEpoch_Hud.Scripts
                                 switch (__instance.name)
                                 {
                                     //Skills
+                                    case "Toggle_Skills_AutoCast_DisableInNonCombatZone": { Save_Manager.instance.data.Skills.AutoCast.DisableInNonCombatZone = __instance.isOn; break; }
+                                    case "Toggle_Skills_AutoCast_PauseOnZoneChange": { Save_Manager.instance.data.Skills.AutoCast.PauseOnZoneChange = __instance.isOn; break; }
+                                    case "Toggle_Skills_Summon_GodMode": { Save_Manager.instance.data.Skills.Summon.Enable_GodMode = __instance.isOn; break; }
+                                    case "Toggle_Skills_Summon_Forever": { Save_Manager.instance.data.Skills.Summon.Enable_Forever = __instance.isOn; break; }
+                                    case "Toggle_Skills_Summon_DontCollide": { Save_Manager.instance.data.Skills.Summon.Enable_DontCollide = __instance.isOn; break; }
                                     case "Toggle_RemoveManaCost": { Save_Manager.instance.data.Skills.Enable_RemoveManaCost = __instance.isOn; break; }
                                     case "Toggle_RemoveChannelCost": { Save_Manager.instance.data.Skills.Enable_RemoveChannelCost = __instance.isOn; break; }
                                     case "Toggle_ManaRegenWhenChanneling": { Save_Manager.instance.data.Skills.Enable_NoManaRegenWhileChanneling = __instance.isOn; break; }
@@ -1196,6 +1262,9 @@ namespace LastEpoch_Hud.Scripts
                                     case "Slider_Items_Craft_LegendaryPotencial": { Save_Manager.instance.data.Items.CraftingSlot.LegendaryPotencial = (int)__0; break; }
                                     case "Slider_Items_Craft_WeaverWill": { Save_Manager.instance.data.Items.CraftingSlot.WeaverWill = (int)__0; break; }
                                     case "Slider_Items_Pickup_AutoStore_Timer": { Save_Manager.instance.data.Items.Pickup.AutoStore_Timer = (int)__0; break; }
+                                    case "Slider_Items_Pickup_AutoShatter_Chance": { Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance = __0; break; }
+                                    case "Slider_Items_Pickup_AutoShatter_AffixChance": { Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance = __0; break; }
+                                    case "Slider_Items_Pickup_AutoShatter_QuantityChance": { Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance = __0; break; }
                                 }
                             }
                             else if (__instance.name.Contains("Slider_Scenes_"))
@@ -1215,6 +1284,10 @@ namespace LastEpoch_Hud.Scripts
                                     case "Slider_Scenes_Monoliths_MobsDensity": { Save_Manager.instance.data.Scenes.Monoliths.MobsDensity = __0; break; }
                                     case "Slider_Scenes_Monoliths_MobsDefeatOnStart": { Save_Manager.instance.data.Scenes.Monoliths.MobsDefeatOnStart = __0; break; }
                                     case "Slider_Scenes_Monoliths_BlessingSlots": { Save_Manager.instance.data.Scenes.Monoliths.BlessingSlots = (int)__0; break; }
+
+                                    case "Slider_Scenes_Difficulty_EnemyHealthMult": { Save_Manager.instance.data.Scenes.Difficulty.EnemyHealthMult = __0; break; }
+                                    case "Slider_Scenes_Difficulty_EnemyDamageMult": { Save_Manager.instance.data.Scenes.Difficulty.EnemyDamageMult = __0; break; }
+                                    case "Slider_Scenes_Difficulty_EnemySpeedMult": { Save_Manager.instance.data.Scenes.Difficulty.EnemySpeedMult = __0; break; }
                                 }
                             }
                             else
@@ -1315,10 +1388,83 @@ namespace LastEpoch_Hud.Scripts
                 input.onEndEdit = new Il2CppTMPro.TMP_InputField.SubmitEvent();
                 input.onEndEdit.AddListener(action);
             }
+            public static void StyleToggle(Toggle toggle)
+            {
+                if (toggle.IsNullOrDestroyed()) return;
+                try
+                {
+                    var cb = toggle.colors;
+                    cb.normalColor = Color.white;
+                    cb.highlightedColor = new Color(1.0f, 0.95f, 0.8f, 1.0f);
+                    cb.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1.0f);
+                    cb.selectedColor = Color.white;
+                    toggle.colors = cb;
+
+                    Outline outline = null;
+                    if (!toggle.targetGraphic.IsNullOrDestroyed())
+                    {
+                        outline = toggle.targetGraphic.GetComponent<Outline>();
+                        if (outline.IsNullOrDestroyed())
+                        {
+                            outline = toggle.targetGraphic.gameObject.AddComponent<Outline>();
+                        }
+                        if (!outline.IsNullOrDestroyed())
+                        {
+                            outline.effectDistance = new Vector2(1.5f, -1.5f);
+                        }
+                    }
+
+                    System.Action updateVisual = () =>
+                    {
+                        if (toggle.IsNullOrDestroyed()) return;
+                        bool isOn = toggle.isOn;
+
+                        // 背景框：未勾选时显示清晰的暗金立体描边+石板灰底，绝不与黑底融为一体；勾选时高亮纯金
+                        if (!toggle.targetGraphic.IsNullOrDestroyed())
+                        {
+                            if (isOn)
+                            {
+                                toggle.targetGraphic.color = new Color(0.98f, 0.76f, 0.18f, 1.0f);
+                                if (!outline.IsNullOrDestroyed())
+                                {
+                                    outline.effectColor = new Color(1.0f, 0.90f, 0.50f, 1.0f);
+                                    outline.enabled = true;
+                                }
+                            }
+                            else
+                            {
+                                toggle.targetGraphic.color = new Color(0.28f, 0.28f, 0.30f, 1.0f);
+                                if (!outline.IsNullOrDestroyed())
+                                {
+                                    outline.effectColor = new Color(0.72f, 0.65f, 0.50f, 0.95f);
+                                    outline.enabled = true;
+                                }
+                            }
+                        }
+
+                        // 对勾：使用高对比度纯黑加粗对勾
+                        if (!toggle.graphic.IsNullOrDestroyed())
+                        {
+                            toggle.graphic.color = new Color(0.05f, 0.05f, 0.05f, 1.0f);
+                            var rect = toggle.graphic.rectTransform;
+                            if (!rect.IsNullOrDestroyed())
+                            {
+                                rect.localScale = new Vector3(1.2f, 1.2f, 1.0f);
+                            }
+                        }
+                    };
+
+                    updateVisual();
+                    toggle.onValueChanged.AddListener(new System.Action<bool>((_) => updateVisual()));
+                }
+                catch { }
+            }
+
             public static void Set_Toggle_Event(Toggle toggle, UnityEngine.Events.UnityAction<bool> action)
             {
                 toggle.onValueChanged = new Toggle.ToggleEvent();
                 toggle.onValueChanged.AddListener(action);
+                StyleToggle(toggle);
             }
         }
         public class Hud_Base
@@ -1663,17 +1809,17 @@ namespace LastEpoch_Hud.Scripts
 
                                 Data.monolith_dropdown = Functions.Get_DopboxInPanel(character_data_content, "Monoliths", "Dropdown", new System.Action<int>((_) => { Update_Monoliths_Data(); }));
                                 Data.monolith_dropdown.options = new List<Dropdown.OptionData>();
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Select" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Fall_Of_The_Outcast" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "The_Stolen_Lance" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "The_Black_Sun" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Blood_Frost_And_Death" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Ending_The_Storm" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Fall_Of_The_Empire" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Reign_Of_Dragon" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "The_Last_Ruins" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "The_Age_Of_Winter" });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = "Spirits_Of_Fire" });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Fall_Of_The_Outcast") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Stolen_Lance") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Black_Sun") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Blood_Frost_And_Death") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Ending_The_Storm") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Fall_Of_The_Empire") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Reign_Of_Dragon") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Last_Ruins") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Age_Of_Winter") });
+                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Spirits_Of_Fire") });
                                 Data.monolith_dropdown.m_CurrentIndex = 0;
                             }
                             else { Main.logger_instance.Error("Hud Manager : character_data_content is null"); }
@@ -2205,7 +2351,7 @@ namespace LastEpoch_Hud.Scripts
                         Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
                         foreach (CharacterClass char_class in Refs_Manager.character_class_list.classes)
                         {
-                            options.Add(new Dropdown.OptionData { text = char_class.className });
+                            options.Add(new Dropdown.OptionData { text = LocalizeText(char_class.className) });
                         }
                         if (!Data.class_dropdown.IsNullOrDestroyed())
                         {
@@ -3314,6 +3460,15 @@ namespace LastEpoch_Hud.Scripts
 
                                 Pickup.range_pickup_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "Range_Pickup", "Toggle_Items_Pickup_Range_Pickup");
                                 Pickup.hide_materials_notifications_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "Hide_Notifications", "Toggle_Items_Pickup_Hide_Notifications");
+
+                                Pickup.auto_shatter_fromfilter_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "AutoShatter_FromFilter", "Toggle_Items_Pickup_AutoShatter_FromFilter");
+                                Pickup.auto_shatter_rune_toggle = Functions.Get_ToggleInPanel(items_pickup_content, "AutoShatter_Rune", "Toggle_Items_Pickup_AutoShatter_Rune");
+                                Pickup.auto_shatter_chance_slider = Functions.Get_SliderInPanel(items_pickup_content, "AutoShatter_Chance", "Slider_Items_Pickup_AutoShatter_Chance");
+                                Pickup.auto_shatter_chance_text = Functions.Get_TextInButton(items_pickup_content, "AutoShatter_Chance", "Value");
+                                Pickup.auto_shatter_affix_chance_slider = Functions.Get_SliderInPanel(items_pickup_content, "AutoShatter_AffixChance", "Slider_Items_Pickup_AutoShatter_AffixChance");
+                                Pickup.auto_shatter_affix_chance_text = Functions.Get_TextInButton(items_pickup_content, "AutoShatter_AffixChance", "Value");
+                                Pickup.auto_shatter_quantity_chance_slider = Functions.Get_SliderInPanel(items_pickup_content, "AutoShatter_QuantityChance", "Slider_Items_Pickup_AutoShatter_QuantityChance");
+                                Pickup.auto_shatter_quantity_chance_text = Functions.Get_TextInButton(items_pickup_content, "AutoShatter_QuantityChance", "Value");
                             }
 
                             GameObject items_req_content = Functions.GetViewportContent(content_obj, "Items_Pickup", "Items_Req_Content");
@@ -3544,6 +3699,12 @@ namespace LastEpoch_Hud.Scripts
                             Pickup.range_pickup_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_RangePickup;
                             Pickup.hide_materials_notifications_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_HideMaterialsNotifications;
 
+                            if (!Pickup.auto_shatter_fromfilter_toggle.IsNullOrDestroyed()) { Pickup.auto_shatter_fromfilter_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_FromFilter; }
+                            if (!Pickup.auto_shatter_rune_toggle.IsNullOrDestroyed()) { Pickup.auto_shatter_rune_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoShatter_Rune; }
+                            if (!Pickup.auto_shatter_chance_slider.IsNullOrDestroyed()) { Pickup.auto_shatter_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance; }
+                            if (!Pickup.auto_shatter_affix_chance_slider.IsNullOrDestroyed()) { Pickup.auto_shatter_affix_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance; }
+                            if (!Pickup.auto_shatter_quantity_chance_slider.IsNullOrDestroyed()) { Pickup.auto_shatter_quantity_chance_slider.value = Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance; }
+
                             //Requirements
                             Requirements.class_req_toggle.isOn = Save_Manager.instance.data.Items.Req.classe;
                             Requirements.level_req_toggle.isOn = Save_Manager.instance.data.Items.Req.level;
@@ -3677,6 +3838,10 @@ namespace LastEpoch_Hud.Scripts
                             CraftingSlot.uniquemod_5_value_text.text = (int)((Save_Manager.instance.data.Items.CraftingSlot.UniqueMod_5 / 255) * 100) + " %";
                             CraftingSlot.uniquemod_6_value_text.text = (int)((Save_Manager.instance.data.Items.CraftingSlot.UniqueMod_6 / 255) * 100) + " %";
                             CraftingSlot.uniquemod_7_value_text.text = (int)((Save_Manager.instance.data.Items.CraftingSlot.UniqueMod_7 / 255) * 100) + " %";
+
+                            if (!Pickup.auto_shatter_chance_text.IsNullOrDestroyed()) { Pickup.auto_shatter_chance_text.text = ((int)Save_Manager.instance.data.Items.Pickup.AutoShatter_Chance) + " %"; }
+                            if (!Pickup.auto_shatter_affix_chance_text.IsNullOrDestroyed()) { Pickup.auto_shatter_affix_chance_text.text = ((int)Save_Manager.instance.data.Items.Pickup.AutoShatter_AffixChance) + " %"; }
+                            if (!Pickup.auto_shatter_quantity_chance_text.IsNullOrDestroyed()) { Pickup.auto_shatter_quantity_chance_text.text = ((int)Save_Manager.instance.data.Items.Pickup.AutoShatter_QuantityChance) + " %"; }
                         }
                     }
                 }
@@ -3758,6 +3923,15 @@ namespace LastEpoch_Hud.Scripts
                     public static Toggle autosell_hide_toggle = null;
                     public static Toggle range_pickup_toggle = null;
                     public static Toggle hide_materials_notifications_toggle = null;
+
+                    public static Toggle auto_shatter_fromfilter_toggle = null;
+                    public static Toggle auto_shatter_rune_toggle = null;
+                    public static Slider auto_shatter_chance_slider = null;
+                    public static Text auto_shatter_chance_text = null;
+                    public static Slider auto_shatter_affix_chance_slider = null;
+                    public static Text auto_shatter_affix_chance_text = null;
+                    public static Slider auto_shatter_quantity_chance_slider = null;
+                    public static Text auto_shatter_quantity_chance_text = null;
                 }
                 public class Requirements
                 {
@@ -3823,14 +3997,14 @@ namespace LastEpoch_Hud.Scripts
                             Initializing_type = true;
                             forcedrop_type_dropdown.ClearOptions();
                             Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
-                            options.Add(new Dropdown.OptionData { text = "Select" });
+                            options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
                             foreach (ItemList.BaseEquipmentItem item in ItemList.get().EquippableItems)
                             {
-                                options.Add(new Dropdown.OptionData { text = item.BaseTypeName });
+                                options.Add(new Dropdown.OptionData { text = LocalizeText(item.BaseTypeName) });
                             }
                             foreach (ItemList.BaseNonEquipmentItem item in ItemList.get().nonEquippableItems)
                             {
-                                options.Add(new Dropdown.OptionData { text = item.BaseTypeName });
+                                options.Add(new Dropdown.OptionData { text = LocalizeText(item.BaseTypeName) });
                             }
                             forcedrop_type_dropdown.options = options;
                             forcedrop_type_dropdown.value = 0;
@@ -3860,7 +4034,7 @@ namespace LastEpoch_Hud.Scripts
                                 bool found = false;
                                 foreach (ItemList.BaseEquipmentItem item in ItemList.get().EquippableItems)
                                 {
-                                    if (item.BaseTypeName == type_str)
+                                    if (item.BaseTypeName == type_str || LocalizeText(item.BaseTypeName) == type_str)
                                     {
                                         item_type = item.baseTypeID;
                                         found = true;
@@ -3871,7 +4045,7 @@ namespace LastEpoch_Hud.Scripts
                                 {
                                     foreach (ItemList.BaseNonEquipmentItem item in ItemList.get().nonEquippableItems)
                                     {
-                                        if (item.BaseTypeName == type_str)
+                                        if (item.BaseTypeName == type_str || LocalizeText(item.BaseTypeName) == type_str)
                                         {
                                             item_type = item.baseTypeID;
                                             found = true;
@@ -3897,7 +4071,7 @@ namespace LastEpoch_Hud.Scripts
                         {
                             forcedrop_rarity_dropdown.ClearOptions();
                             Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
-                            options.Add(new Dropdown.OptionData { text = "Select" });
+                            options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
                             if ((forcedrop_type_dropdown.value > 0) && (item_type > -1))
                             {
                                 bool has_unique = false;
@@ -3914,9 +4088,9 @@ namespace LastEpoch_Hud.Scripts
                                         }
                                     }
                                 }
-                                options.Add(new Dropdown.OptionData { text = "Base Item" });
-                                if (has_unique) { options.Add(new Dropdown.OptionData { text = "Unique" }); }
-                                if (has_set) { options.Add(new Dropdown.OptionData { text = "Set" }); }
+                                options.Add(new Dropdown.OptionData { text = LocalizeText("Base Item") });
+                                if (has_unique) { options.Add(new Dropdown.OptionData { text = LocalizeText("Unique") }); }
+                                if (has_set) { options.Add(new Dropdown.OptionData { text = LocalizeText("Set") }); }
                                 forcedrop_rarity_dropdown.enabled = true;
                             }
                             else { forcedrop_rarity_dropdown.enabled = false; }
@@ -3934,9 +4108,9 @@ namespace LastEpoch_Hud.Scripts
                             {
                                 string rarity_str = forcedrop_rarity_dropdown.options[index].text;
                                 item_rarity = -1;
-                                if (rarity_str == "Base Item") { item_rarity = 0; }
-                                else if (rarity_str == "Unique") { item_rarity = 7; }
-                                else if (rarity_str == "Set") { item_rarity = 8; }
+                                if (rarity_str == "Base Item" || rarity_str == LocalizeText("Base Item")) { item_rarity = 0; }
+                                else if (rarity_str == "Unique" || rarity_str == LocalizeText("Unique")) { item_rarity = 7; }
+                                else if (rarity_str == "Set" || rarity_str == LocalizeText("Set")) { item_rarity = 8; }
                                 //Main.logger_instance.Msg("Select : Rarity = " + rarity_str);
                                 UpdateItems();
                                 UpdateButton();
@@ -3956,7 +4130,7 @@ namespace LastEpoch_Hud.Scripts
                             forcedrop_items_dropdown.ClearOptions();
 
                             Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
-                            options.Add(new Dropdown.OptionData { text = "Select" });
+                            options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
                             if ((item_type > -1) && (item_rarity > -1))
                             {
                                 if (item_rarity == 0)
@@ -4329,6 +4503,34 @@ namespace LastEpoch_Hud.Scripts
                                 Monoliths.complete_objective_toggle = Functions.Get_ToggleInPanel(scene_monoliths_content, "CompleteObjective", "Toggle_Scenes_Monoliths_CompleteObjective");
                                 Monoliths.no_lost_when_die_toggle = Functions.Get_ToggleInPanel(scene_monoliths_content, "NoLostWhenDie", "Toggle_Scenes_Monoliths_NoLostWhenDie");
                             }
+                            GameObject scene_difficulty_content = Functions.GetViewportContent(content_obj, "Difficulty", "Scenes_Difficulty_Content");
+                            if (!scene_difficulty_content.IsNullOrDestroyed())
+                            {
+                                Difficulty.enemy_health_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "EnemyHealthMult", "Toggle_Scenes_Difficulty_EnemyHealthMult");
+                                Difficulty.enemy_health_text = Functions.Get_TextInToggle(scene_difficulty_content, "EnemyHealthMult", "Toggle_Scenes_Difficulty_EnemyHealthMult", "Value");
+                                Difficulty.enemy_health_slider = Functions.Get_SliderInPanel(scene_difficulty_content, "EnemyHealthMult", "Slider_Scenes_Difficulty_EnemyHealthMult");
+
+                                Difficulty.enemy_damage_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "EnemyDamageMult", "Toggle_Scenes_Difficulty_EnemyDamageMult");
+                                Difficulty.enemy_damage_text = Functions.Get_TextInToggle(scene_difficulty_content, "EnemyDamageMult", "Toggle_Scenes_Difficulty_EnemyDamageMult", "Value");
+                                Difficulty.enemy_damage_slider = Functions.Get_SliderInPanel(scene_difficulty_content, "EnemyDamageMult", "Slider_Scenes_Difficulty_EnemyDamageMult");
+
+                                Difficulty.enemy_speed_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "EnemySpeedMult", "Toggle_Scenes_Difficulty_EnemySpeedMult");
+                                Difficulty.enemy_speed_text = Functions.Get_TextInToggle(scene_difficulty_content, "EnemySpeedMult", "Toggle_Scenes_Difficulty_EnemySpeedMult", "Value");
+                                Difficulty.enemy_speed_slider = Functions.Get_SliderInPanel(scene_difficulty_content, "EnemySpeedMult", "Slider_Scenes_Difficulty_EnemySpeedMult");
+
+                                Difficulty.scale_zone_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "ScaleZoneToPlayer", "Toggle_Scenes_Difficulty_ScaleZoneToPlayer");
+                                Difficulty.cap_level_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "CapLevelToZone", "Toggle_Scenes_Difficulty_CapLevelToZone");
+
+                                Difficulty.force_rarity_off_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "ForceRarity", "Toggle_Scenes_Difficulty_Off");
+                                Difficulty.force_rarity_magic_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "ForceRarity", "Toggle_Scenes_Difficulty_Magic");
+                                Difficulty.force_rarity_rare_toggle = Functions.Get_ToggleInPanel(scene_difficulty_content, "ForceRarity", "Toggle_Scenes_Difficulty_Rare");
+
+                                GameObject reset_btn_obj = Functions.FindDescendant(scene_difficulty_content, "Btn_Scenes_Difficulty_Reset");
+                                if (!reset_btn_obj.IsNullOrDestroyed())
+                                {
+                                    Difficulty.reset_button = reset_btn_obj.GetComponent<Button>();
+                                }
+                            }
                         }
                     }
                 }
@@ -4336,6 +4538,7 @@ namespace LastEpoch_Hud.Scripts
                 {
                     Events.Set_Button_Event(Camera.reset_button, Camera.Reset_OnClick_Action);
                     Events.Set_Button_Event(Camera.set_button, Camera.Set_OnClick_Action);
+                    Events.Set_Button_Event(Difficulty.reset_button, Difficulty.Reset_OnClick_Action);
                 }
                 public static void Set_Active(bool show)
                 {
@@ -4412,6 +4615,8 @@ namespace LastEpoch_Hud.Scripts
                             Monoliths.complete_objective_toggle.isOn = Save_Manager.instance.data.Scenes.Monoliths.Enable_CompleteObjective;
                             Monoliths.no_lost_when_die_toggle.isOn = Save_Manager.instance.data.Scenes.Monoliths.Enable_NoLostWhenDie;
 
+                            Difficulty.Init_UserData_UI();
+
                             controls_initialized = true;
                             result = true;
                         }
@@ -4437,6 +4642,10 @@ namespace LastEpoch_Hud.Scripts
                             Monoliths.mob_density_text.text = "" + (int)(Save_Manager.instance.data.Scenes.Monoliths.MobsDensity);
                             Monoliths.mob_defeat_text.text = "" + (int)(Save_Manager.instance.data.Scenes.Monoliths.MobsDefeatOnStart);
                             Monoliths.blessing_slot_text.text = "" + (int)(Save_Manager.instance.data.Scenes.Monoliths.BlessingSlots);
+
+                            if (!Difficulty.enemy_health_text.IsNullOrDestroyed()) Difficulty.enemy_health_text.text = string.Format("{0:0.##}x", Save_Manager.instance.data.Scenes.Difficulty.EnemyHealthMult);
+                            if (!Difficulty.enemy_damage_text.IsNullOrDestroyed()) Difficulty.enemy_damage_text.text = string.Format("{0:0.##}x", Save_Manager.instance.data.Scenes.Difficulty.EnemyDamageMult);
+                            if (!Difficulty.enemy_speed_text.IsNullOrDestroyed()) Difficulty.enemy_speed_text.text = string.Format("{0:0.##}x", Save_Manager.instance.data.Scenes.Difficulty.EnemySpeedMult);
                         }
                     }
                 }
@@ -4526,6 +4735,73 @@ namespace LastEpoch_Hud.Scripts
                     public static Toggle complete_objective_toggle = null;
                     public static Toggle no_lost_when_die_toggle = null;
                 }
+                public class Difficulty
+                {
+                    public static Toggle enemy_health_toggle = null;
+                    public static Text enemy_health_text = null;
+                    public static Slider enemy_health_slider = null;
+
+                    public static Toggle enemy_damage_toggle = null;
+                    public static Text enemy_damage_text = null;
+                    public static Slider enemy_damage_slider = null;
+
+                    public static Toggle enemy_speed_toggle = null;
+                    public static Text enemy_speed_text = null;
+                    public static Slider enemy_speed_slider = null;
+
+                    public static Toggle scale_zone_toggle = null;
+                    public static Toggle cap_level_toggle = null;
+
+                    public static Toggle force_rarity_off_toggle = null;
+                    public static Toggle force_rarity_magic_toggle = null;
+                    public static Toggle force_rarity_rare_toggle = null;
+
+                    public static Button reset_button = null;
+
+                    public static readonly System.Action Reset_OnClick_Action = new System.Action(Reset);
+                    public static void Reset()
+                    {
+                        if (Save_Manager.instance != null && Save_Manager.instance.initialized)
+                        {
+                            Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyHealthMult = false;
+                            Save_Manager.instance.data.Scenes.Difficulty.EnemyHealthMult = 1.0f;
+                            Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemyDamageMult = false;
+                            Save_Manager.instance.data.Scenes.Difficulty.EnemyDamageMult = 1.0f;
+                            Save_Manager.instance.data.Scenes.Difficulty.Enable_EnemySpeedMult = false;
+                            Save_Manager.instance.data.Scenes.Difficulty.EnemySpeedMult = 1.0f;
+                            Save_Manager.instance.data.Scenes.Difficulty.Enable_ScaleZoneToPlayer = false;
+                            Save_Manager.instance.data.Scenes.Difficulty.Enable_CapLevelToZone = false;
+                            Save_Manager.instance.data.Scenes.Difficulty.ForceMonsterRarity = 0;
+                            Save_Manager.instance.Save();
+
+                            Init_UserData_UI();
+                            UpdateVisuals();
+                        }
+                    }
+
+                    public static void Init_UserData_UI()
+                    {
+                        if (Save_Manager.instance != null && Save_Manager.instance.initialized)
+                        {
+                            var diff = Save_Manager.instance.data.Scenes.Difficulty;
+                            if (!enemy_health_toggle.IsNullOrDestroyed()) enemy_health_toggle.isOn = diff.Enable_EnemyHealthMult;
+                            if (!enemy_health_slider.IsNullOrDestroyed()) enemy_health_slider.value = diff.EnemyHealthMult;
+
+                            if (!enemy_damage_toggle.IsNullOrDestroyed()) enemy_damage_toggle.isOn = diff.Enable_EnemyDamageMult;
+                            if (!enemy_damage_slider.IsNullOrDestroyed()) enemy_damage_slider.value = diff.EnemyDamageMult;
+
+                            if (!enemy_speed_toggle.IsNullOrDestroyed()) enemy_speed_toggle.isOn = diff.Enable_EnemySpeedMult;
+                            if (!enemy_speed_slider.IsNullOrDestroyed()) enemy_speed_slider.value = diff.EnemySpeedMult;
+
+                            if (!scale_zone_toggle.IsNullOrDestroyed()) scale_zone_toggle.isOn = diff.Enable_ScaleZoneToPlayer;
+                            if (!cap_level_toggle.IsNullOrDestroyed()) cap_level_toggle.isOn = diff.Enable_CapLevelToZone;
+
+                            if (!force_rarity_off_toggle.IsNullOrDestroyed()) force_rarity_off_toggle.isOn = (diff.ForceMonsterRarity == 0);
+                            if (!force_rarity_magic_toggle.IsNullOrDestroyed()) force_rarity_magic_toggle.isOn = (diff.ForceMonsterRarity == 1);
+                            if (!force_rarity_rare_toggle.IsNullOrDestroyed()) force_rarity_rare_toggle.isOn = (diff.ForceMonsterRarity == 2);
+                        }
+                    }
+                }
             }            
             public class Skills
             {
@@ -4566,6 +4842,33 @@ namespace LastEpoch_Hud.Scripts
                                 SkillTree.enable_movement_no_target_toggle = Functions.Get_ToggleInPanel(skills_content, "NoTarget", "Toggle_NoTarget");
                                 SkillTree.enable_movement_immune_toggle = Functions.Get_ToggleInPanel(skills_content, "ImmuneDuringMovement", "Toggle_ImmuneDuringMovement");
                                 SkillTree.enable_movement_simple_path_toggle = Functions.Get_ToggleInPanel(skills_content, "DisableSimplePath", "Toggle_DisableSimplePath");
+
+                                SkillTree.autocast_disable_in_noncombat_toggle = Functions.Get_ToggleInPanel(skills_content, "DisableInNonCombatZone", "Toggle_Skills_AutoCast_DisableInNonCombatZone");
+                                SkillTree.autocast_pause_on_zonechange_toggle = Functions.Get_ToggleInPanel(skills_content, "PauseOnZoneChange", "Toggle_Skills_AutoCast_PauseOnZoneChange");
+
+                                SkillTree.summon_godmode_toggle = Functions.Get_ToggleInPanel(skills_content, "SummonGodMode", "Toggle");
+                                if (!SkillTree.summon_godmode_toggle.IsNullOrDestroyed())
+                                {
+                                    SkillTree.summon_godmode_toggle.name = "Toggle_Skills_Summon_GodMode";
+                                    SkillTree.summon_godmode_toggle.gameObject.name = "Toggle_Skills_Summon_GodMode";
+                                    Events.StyleToggle(SkillTree.summon_godmode_toggle);
+                                }
+
+                                SkillTree.summon_forever_toggle = Functions.Get_ToggleInPanel(skills_content, "SummonForever", "Toggle");
+                                if (!SkillTree.summon_forever_toggle.IsNullOrDestroyed())
+                                {
+                                    SkillTree.summon_forever_toggle.name = "Toggle_Skills_Summon_Forever";
+                                    SkillTree.summon_forever_toggle.gameObject.name = "Toggle_Skills_Summon_Forever";
+                                    Events.StyleToggle(SkillTree.summon_forever_toggle);
+                                }
+
+                                SkillTree.summon_dontcollide_toggle = Functions.Get_ToggleInPanel(skills_content, "SummonDontCollide", "Toggle");
+                                if (!SkillTree.summon_dontcollide_toggle.IsNullOrDestroyed())
+                                {
+                                    SkillTree.summon_dontcollide_toggle.name = "Toggle_Skills_Summon_DontCollide";
+                                    SkillTree.summon_dontcollide_toggle.gameObject.name = "Toggle_Skills_Summon_DontCollide";
+                                    Events.StyleToggle(SkillTree.summon_dontcollide_toggle);
+                                }
                             }
                             else { Main.logger_instance.Error("Skills content is null"); }
 
@@ -4768,6 +5071,18 @@ namespace LastEpoch_Hud.Scripts
                             SkillTree.enable_movement_immune_toggle.isOn = Save_Manager.instance.data.Skills.MovementSkills.Enable_ImmuneDuringMovement;
                             SkillTree.enable_movement_simple_path_toggle.isOn = Save_Manager.instance.data.Skills.MovementSkills.Disable_SimplePath;
 
+                            if (!SkillTree.autocast_disable_in_noncombat_toggle.IsNullOrDestroyed())
+                                SkillTree.autocast_disable_in_noncombat_toggle.isOn = Save_Manager.instance.data.Skills.AutoCast.DisableInNonCombatZone;
+                            if (!SkillTree.autocast_pause_on_zonechange_toggle.IsNullOrDestroyed())
+                                SkillTree.autocast_pause_on_zonechange_toggle.isOn = Save_Manager.instance.data.Skills.AutoCast.PauseOnZoneChange;
+
+                            if (!SkillTree.summon_godmode_toggle.IsNullOrDestroyed())
+                                SkillTree.summon_godmode_toggle.isOn = Save_Manager.instance.data.Skills.Summon.Enable_GodMode;
+                            if (!SkillTree.summon_forever_toggle.IsNullOrDestroyed())
+                                SkillTree.summon_forever_toggle.isOn = Save_Manager.instance.data.Skills.Summon.Enable_Forever;
+                            if (!SkillTree.summon_dontcollide_toggle.IsNullOrDestroyed())
+                                SkillTree.summon_dontcollide_toggle.isOn = Save_Manager.instance.data.Skills.Summon.Enable_DontCollide;
+
                             //Companions
                             Companions.enable_maximum_companions_toggle.isOn = Save_Manager.instance.data.Skills.Companion.Enable_Limit;
                             Companions.maximum_companions_slider.value = Save_Manager.instance.data.Skills.Companion.Limit;
@@ -4960,6 +5275,13 @@ namespace LastEpoch_Hud.Scripts
                     public static Toggle enable_movement_no_target_toggle = null;
                     public static Toggle enable_movement_immune_toggle = null;
                     public static Toggle enable_movement_simple_path_toggle = null;
+
+                    public static Toggle autocast_disable_in_noncombat_toggle = null;
+                    public static Toggle autocast_pause_on_zonechange_toggle = null;
+
+                    public static Toggle summon_godmode_toggle = null;
+                    public static Toggle summon_forever_toggle = null;
+                    public static Toggle summon_dontcollide_toggle = null;
                 }
                 public class Companions
                 {
@@ -5813,14 +6135,14 @@ namespace LastEpoch_Hud.Scripts
                         {
                         type_dropdown.ClearOptions();
                         Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
-                        options.Add(new Dropdown.OptionData { text = "Select" });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
                         foreach (ItemList.BaseEquipmentItem item in ItemList.get().EquippableItems)
                         {
-                            options.Add(new Dropdown.OptionData { text = item.BaseTypeName });
+                            options.Add(new Dropdown.OptionData { text = LocalizeText(item.BaseTypeName) });
                         }
                         foreach (ItemList.BaseNonEquipmentItem item in ItemList.get().nonEquippableItems)
                         {
-                            options.Add(new Dropdown.OptionData { text = item.BaseTypeName });
+                            options.Add(new Dropdown.OptionData { text = LocalizeText(item.BaseTypeName) });
                         }
                         type_dropdown.options = options;
                         type_dropdown.value = 0;
@@ -5854,7 +6176,7 @@ namespace LastEpoch_Hud.Scripts
                             bool found = false;
                             foreach (ItemList.BaseEquipmentItem item in ItemList.get().EquippableItems)
                             {
-                                if (item.BaseTypeName == type_str)
+                                if (item.BaseTypeName == type_str || LocalizeText(item.BaseTypeName) == type_str)
                                 {
                                     item_type = item.baseTypeID;
                                     found = true;
@@ -5865,7 +6187,7 @@ namespace LastEpoch_Hud.Scripts
                             {
                                 foreach (ItemList.BaseNonEquipmentItem item in ItemList.get().nonEquippableItems)
                                 {
-                                    if (item.BaseTypeName == type_str)
+                                    if (item.BaseTypeName == type_str || LocalizeText(item.BaseTypeName) == type_str)
                                     {
                                         item_type = item.baseTypeID;
                                         found = true;
@@ -5894,7 +6216,7 @@ namespace LastEpoch_Hud.Scripts
                     {
                         rarity_dropdown.ClearOptions();
                         Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
-                        options.Add(new Dropdown.OptionData { text = "Select" });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
                         if ((type_dropdown.value > 0) && (item_type > -1))
                         {
                             bool has_unique = false;
@@ -5911,9 +6233,9 @@ namespace LastEpoch_Hud.Scripts
                                     }
                                 }
                             }
-                            options.Add(new Dropdown.OptionData { text = "Base Item" });
-                            if (has_unique) { options.Add(new Dropdown.OptionData { text = "Unique" }); }
-                            if (has_set) { options.Add(new Dropdown.OptionData { text = "Set" }); }
+                            options.Add(new Dropdown.OptionData { text = LocalizeText("Base Item") });
+                            if (has_unique) { options.Add(new Dropdown.OptionData { text = LocalizeText("Unique") }); }
+                            if (has_set) { options.Add(new Dropdown.OptionData { text = LocalizeText("Set") }); }
                             rarity_dropdown.enabled = true;
                         }
                         else { rarity_dropdown.enabled = false; }
@@ -5931,9 +6253,9 @@ namespace LastEpoch_Hud.Scripts
                         {
                             string rarity_str = rarity_dropdown.options[index].text;
                             item_rarity = -1;
-                            if (rarity_str == "Base Item") { item_rarity = 0; }
-                            else if (rarity_str == "Unique") { item_rarity = 7; }
-                            else if (rarity_str == "Set") { item_rarity = 8; }
+                            if (rarity_str == "Base Item" || rarity_str == LocalizeText("Base Item")) { item_rarity = 0; }
+                            else if (rarity_str == "Unique" || rarity_str == LocalizeText("Unique")) { item_rarity = 7; }
+                            else if (rarity_str == "Set" || rarity_str == LocalizeText("Set")) { item_rarity = 8; }
                             UpdateItems();
                             //UpdateUI();
                         }
@@ -5953,7 +6275,7 @@ namespace LastEpoch_Hud.Scripts
                         items_dropdown.ClearOptions();
 
                         Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
-                        options.Add(new Dropdown.OptionData { text = "Select" });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
                         if ((item_type > -1) && (item_rarity > -1))
                         {
                             if (item_rarity == 0)

@@ -33,6 +33,16 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
             }
         }
 
+        private static bool HasDifficultyData => Save_Manager.instance != null && Save_Manager.instance.initialized;
+
+        private static bool ScaleZoneToPlayerEnabled => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.Enable_ScaleZoneToPlayer
+            : ModSettings.Difficulty.ScaleZoneToPlayer.Value;
+
+        private static bool CapLevelToZoneEnabled => HasDifficultyData
+            ? Save_Manager.instance.data.Scenes.Difficulty.Enable_CapLevelToZone
+            : ModSettings.Difficulty.CapLevelToZone.Value;
+
         [HarmonyPatch(typeof(ZoneInfoManager), "SetZoneLevel")]
         public class SetZoneLevelPatch
         {
@@ -45,7 +55,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
                         return;
                     if (!Scenes.IsGameScene())
                         return;
-                    if (!ModSettings.Difficulty.ScaleZoneToPlayer.Value)
+                    if (!ScaleZoneToPlayerEnabled)
                         return;
 
                     _lastOriginalZoneLevel = level;
@@ -107,7 +117,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Difficulty
         {
             if (!Scenes.IsGameScene())
                 return true;
-            if (!ModSettings.Difficulty.CapLevelToZone.Value)
+            if (!CapLevelToZoneEnabled)
                 return true;
 
             int capLevel = _lastOriginalZoneLevel > 0 ? _lastOriginalZoneLevel : GetZoneLevel();

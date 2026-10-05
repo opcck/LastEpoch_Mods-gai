@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppLE.Services.Models.Items;
 using Il2CppLE.Services.Visuals;
@@ -434,7 +434,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
                 //Add all languages here
             }
 
-            [HarmonyPatch(typeof(Localization), "TryGetText")]
+            [HarmonyPatch(typeof(Il2Cpp.Localization), "TryGetText")]
             public class Localization_TryGetText
             {
                 [HarmonyPrefix]
@@ -452,7 +452,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
                 }
             }
 
-            [HarmonyPatch(typeof(Localization), "GetText")]
+            [HarmonyPatch(typeof(Il2Cpp.Localization), "GetText")]
             public class Localization_GetText
             {
                 [HarmonyPrefix]

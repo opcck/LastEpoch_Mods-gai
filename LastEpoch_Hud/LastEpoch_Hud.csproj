@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net6.0</TargetFrameworks>
-    <LastEpochPath Condition="'$(LastEpochPath)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Last Epoch</LastEpochPath>
+    <LastEpochPath Condition="'$(LastEpochPath)' == ''">G:\SteamLibrary\steamapps\common\Last Epoch</LastEpochPath>
     <OutputType>Library</OutputType>
 	<Nullable>disable</Nullable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -157,7 +157,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Scripts\Mods\Items\Items_Temporalis.txt" />
+    <Compile Remove="Scripts\Mods\Summon\**" />
+    <Compile Remove="Scripts\Mods\Teleport\**" />
+    <Compile Remove="Scripts\Mods\Spawn\TimeBeast.cs" />
+    <Compile Remove="Scripts\Mods\Craft\Craft_MaxTier.cs" />
+    <Compile Remove="Scripts\Mods\Harbringers\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.3.1.1" />

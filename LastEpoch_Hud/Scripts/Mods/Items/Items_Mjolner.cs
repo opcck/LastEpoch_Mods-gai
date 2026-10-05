@@ -1,4 +1,4 @@
-﻿//______________________________________________________________________//
+//______________________________________________________________________//
 //https://discord.com/channels/1366160878579351756/1372660677491036272
 //https://github.com/zakt4n
 
@@ -313,7 +313,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
             }
             private class Hooks
             {
-                [HarmonyPatch(typeof(Localization), "TryGetText")]
+                [HarmonyPatch(typeof(Il2Cpp.Localization), "TryGetText")]
                 private class Localization_TryGetText
                 {
                     [HarmonyPrefix]
@@ -331,7 +331,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
                     }
                 }
 
-                [HarmonyPatch(typeof(Localization), "GetText")]
+                [HarmonyPatch(typeof(Il2Cpp.Localization), "GetText")]
                 private class Localization_GetText
                 {
                     [HarmonyPrefix]

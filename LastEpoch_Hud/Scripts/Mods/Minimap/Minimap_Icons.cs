@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -90,7 +90,7 @@ namespace LastEpoch_Hud.Scripts.Mods.Minimap
             return result;
         }
         
-        [HarmonyPatch(typeof(GroundItemVisuals), "initialise", new System.Type[] { typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(bool) })]
+        [HarmonyPatch(typeof(GroundItemVisuals), "initialise", new System.Type[] { typeof(ItemDataUnpacked), typeof(uint), typeof(GroundItemLabel), typeof(GroundItemRarityVisualsV2), typeof(bool) })]
         public class GroundItemVisuals_initialise
         {
             [HarmonyPostfix]
