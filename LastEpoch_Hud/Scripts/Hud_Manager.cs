@@ -3759,7 +3759,7 @@ namespace LastEpoch_Hud.Scripts
                             Drop.unique_mods_slider_min.value = Save_Manager.instance.data.Items.Drop.UniqueMods_Min;
                             Drop.unique_mods_slider_max.value = Save_Manager.instance.data.Items.Drop.UniqueMods_Max;
 
-                            Drop.legendary_potencial_toggle.isOn = Save_Manager.instance.data.Items.Drop.Enable_ForceLegendary;
+                            Drop.legendary_potencial_toggle.isOn = Save_Manager.instance.data.Items.Drop.Enable_LegendaryPotencial;
                             Drop.legendary_potencial_slider_min.value = Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Min;
                             Drop.legendary_potencial_slider_max.value = Save_Manager.instance.data.Items.Drop.LegendaryPotencial_Max;
 

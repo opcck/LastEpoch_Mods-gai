@@ -28,7 +28,12 @@ namespace LastEpoch_Hud.Scripts
             {
                 Text label_text = label_transform.GetComponent<Text>();
                 if (label_text.IsNullOrDestroyed()) { label_text = label_transform.GetComponentInChildren<Text>(true); }
-                if (!label_text.IsNullOrDestroyed()) { label_text.text = label; }
+                if (!label_text.IsNullOrDestroyed()) { label_text.text = Hud_Manager.LocalizeText(label); }
+            }
+            Toggle row_toggle = row.GetComponentInChildren<Toggle>(true);
+            if (!row_toggle.IsNullOrDestroyed())
+            {
+                Hud_Manager.Events.StyleToggle(row_toggle);
             }
             RectTransform parent_rect = parent as RectTransform;
             if (!parent_rect.IsNullOrDestroyed()) { LayoutRebuilder.ForceRebuildLayoutImmediate(parent_rect); }
