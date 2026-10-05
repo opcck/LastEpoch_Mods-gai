@@ -1,8 +1,9 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppLE.MicrotransactionSystem;
 using Il2CppLE.Networking.Cosmetics;
 using Il2CppLE.Services.Cosmetics;
+using Il2CppLE.UI.MTXStore;
 using MelonLoader;
 using UnityEngine;
 
@@ -49,6 +50,27 @@ namespace LastEpoch_Hud.Scripts.Mods.Cosmetics
                     AddIds(resources.FootprintCosmetics, seen);
                     AddIds(resources.CharacterFXCosmetics, seen);
                     AddIds(resources.StashCosmetics, seen);
+
+                    if (!resources.CosmeticLookupPairs.IsNullOrDestroyed())
+                    {
+                        foreach (var pair in resources.CosmeticLookupPairs)
+                        {
+                            if (!string.IsNullOrEmpty(pair.Key))
+                            {
+                                seen.Add(pair.Key);
+                            }
+                        }
+                    }
+                    if (!resources.AbilityLookupPairs.IsNullOrDestroyed())
+                    {
+                        foreach (var pair in resources.AbilityLookupPairs)
+                        {
+                            if (!string.IsNullOrEmpty(pair.Key))
+                            {
+                                seen.Add(pair.Key);
+                            }
+                        }
+                    }
                 }
             }
             catch (System.Exception ex)
@@ -180,6 +202,46 @@ namespace LastEpoch_Hud.Scripts.Mods.Cosmetics
             static void Postfix(ref bool __result)
             {
                 __result = true;
+            }
+        }
+
+        [HarmonyPatch(typeof(MTXStoreController), nameof(MTXStoreController.IsSupporterPackLive))]
+        public class MTXStoreController_IsSupporterPackLive
+        {
+            [HarmonyPrefix]
+            static bool Prefix(string backendId, ref bool __result)
+            {
+                __result = false;
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(MTXStoreController), nameof(MTXStoreController.GetLiveSupporterPacks))]
+        public class MTXStoreController_GetLiveSupporterPacks
+        {
+            [HarmonyPrefix]
+            static bool Prefix(ref Il2CppSystem.Collections.Generic.List<CatalogItem> __result)
+            {
+                __result = new Il2CppSystem.Collections.Generic.List<CatalogItem>();
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(CosmeticSelectionFlyoutPanelUI), nameof(CosmeticSelectionFlyoutPanelUI.PopulateFlyoutWindowAsync))]
+        public class CosmeticSelectionFlyoutPanelUI_PopulateFlyoutWindowAsync
+        {
+            [HarmonyFinalizer]
+            static System.Exception Finalizer(System.Exception __exception, CosmeticSelectionFlyoutPanelUI __instance)
+            {
+                if (__exception != null)
+                {
+                    Main.logger_instance?.Warning("PopulateFlyoutWindowAsync exception suppressed: " + __exception.Message);
+                    if (!__instance.IsNullOrDestroyed() && !__instance._loadingOverlay.IsNullOrDestroyed())
+                    {
+                        __instance._loadingOverlay.SetActive(false);
+                    }
+                }
+                return null;
             }
         }
     }
