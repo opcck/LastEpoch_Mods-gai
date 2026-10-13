@@ -199,7 +199,8 @@ namespace LastEpoch_Hud.Scripts
                         LegendaryPotencial_Max = 4,
                         Enable_WeaverWill = false,
                         WeaverWill_Min = 0,
-                        WeaverWill_Max = 28
+                        WeaverWill_Max = 28,
+                        Enable_LockWovenEnchanter = false
                     },
                     Pickup =
                     {
@@ -768,6 +769,8 @@ namespace LastEpoch_Hud.Scripts
                 public bool Enable_WeaverWill;
                 public float WeaverWill_Min;
                 public float WeaverWill_Max;
+
+                public bool Enable_LockWovenEnchanter;
             }
             public struct Pickup
             {

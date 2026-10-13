@@ -195,6 +195,11 @@ namespace LastEpoch_Hud.Scripts
                             Content.Headhunter.Get_Refs();
                             Content.Headhunter.Set_Active(false);
                         });
+                        SafeInit("ModUI.SaveManager.BindHud", () =>
+                        {
+                            try { ModUI.SaveManager.BindHud(hud_object); }
+                            catch (System.Exception ex) { Main.logger_instance?.Error("ModUI BindHud failed: " + ex.Message); }
+                        });
                     }
                     else { Main.logger_instance.Error("Hud Manager : Hud Prefab not found"); }
                 }
@@ -684,6 +689,7 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Items_Drop_UniqueMods": { Save_Manager.instance.data.Items.Drop.Enable_UniqueMods = __instance.isOn; break; }
                                     case "Toggle_Items_Drop_LegendaryPotencial": { Save_Manager.instance.data.Items.Drop.Enable_LegendaryPotencial = __instance.isOn; break; }
                                     case "Toggle_Items_Drop_WeaverWill": { Save_Manager.instance.data.Items.Drop.Enable_WeaverWill = __instance.isOn; break; }
+                                    case "Toggle_Items_Drop_LockWovenEnchanter": { Save_Manager.instance.data.Items.Drop.Enable_LockWovenEnchanter = __instance.isOn; break; }
 
                                     case "Toggle_Items_Pickup_AutoPickup_Gold": { Save_Manager.instance.data.Items.Pickup.Enable_AutoPickup_Gold = __instance.isOn; break; }
                                     case "Toggle_Items_Pickup_AutoPickup_Keys": { Save_Manager.instance.data.Items.Pickup.Enable_AutoPickup_Keys = __instance.isOn; break; }
@@ -1648,6 +1654,7 @@ namespace LastEpoch_Hud.Scripts
             private static readonly System.Action Character_OnClick_Action = new System.Action(Character_Click);
             public static void Character_Click()
             {
+                ModUI.TabManager.DeactivateAll();
                 Content.Items.Set_Active(false);
                 Content.Scenes.Set_Active(false);
                 Content.Skills.Set_Active(false);
@@ -1659,6 +1666,7 @@ namespace LastEpoch_Hud.Scripts
             private static readonly System.Action Items_OnClick_Action = new System.Action(Items_Click);
             public static void Items_Click()
             {
+                ModUI.TabManager.DeactivateAll();
                 Content.Character.Set_Active(false);
                 Content.Scenes.Set_Active(false);
                 Content.Skills.Set_Active(false);
@@ -1670,6 +1678,7 @@ namespace LastEpoch_Hud.Scripts
             private static readonly System.Action Scenes_OnClick_Action = new System.Action(Scenes_Click);
             public static void Scenes_Click()
             {
+                ModUI.TabManager.DeactivateAll();
                 Content.Character.Set_Active(false);
                 Content.Items.Set_Active(false);
                 Content.Skills.Set_Active(false);
@@ -1681,6 +1690,7 @@ namespace LastEpoch_Hud.Scripts
             private static readonly System.Action Skills_OnClick_Action = new System.Action(Skills_Click);
             public static void Skills_Click()
             {
+                ModUI.TabManager.DeactivateAll();
                 Content.Character.Set_Active(false);
                 Content.Items.Set_Active(false);
                 Content.Scenes.Set_Active(false);
@@ -1692,6 +1702,7 @@ namespace LastEpoch_Hud.Scripts
             private static readonly System.Action OldForceDrop_OnClick_Action = new System.Action(OldForceDrop_Click);
             public static void OldForceDrop_Click()
             {
+                ModUI.TabManager.DeactivateAll();
                 Content.Character.Set_Active(false);
                 Content.Items.Set_Active(false);
                 Content.Scenes.Set_Active(false);
@@ -1703,6 +1714,7 @@ namespace LastEpoch_Hud.Scripts
             private static readonly System.Action Headhunter_OnClick_Action = new System.Action(Headhunter_Click);
             public static void Headhunter_Click()
             {
+                ModUI.TabManager.DeactivateAll();
                 Content.Character.Set_Active(false);
                 Content.Items.Set_Active(false);
                 Content.Scenes.Set_Active(false);
@@ -3515,6 +3527,35 @@ namespace LastEpoch_Hud.Scripts
                                 Drop.weaver_will_text = Functions.Get_TextInToggle(items_drop_content, "WeaverWill", "Toggle_Items_Drop_WeaverWill", "Value");
                                 Drop.weaver_will_slider_min = Functions.Get_SliderInPanel(items_drop_content, "WeaverWill", "Slider_Items_Drop_WeaverWill_Min");
                                 Drop.weaver_will_slider_max = Functions.Get_SliderInPanel(items_drop_content, "WeaverWill", "Slider_Items_Drop_WeaverWill_Max");
+
+                                GameObject forceSealObj = Functions.GetChild(items_drop_content, "ForceSeal");
+                                if (!forceSealObj.IsNullOrDestroyed())
+                                {
+                                    GameObject lockWovenObj = Object.Instantiate(forceSealObj, items_drop_content.transform);
+                                    lockWovenObj.name = "LockWovenEnchanter";
+                                    RectTransform rt = lockWovenObj.GetComponent<RectTransform>();
+                                    if (!rt.IsNullOrDestroyed())
+                                    {
+                                        rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, -1100f);
+                                    }
+                                    Toggle toggle = lockWovenObj.GetComponentInChildren<Toggle>(true);
+                                    if (!toggle.IsNullOrDestroyed())
+                                    {
+                                        toggle.gameObject.name = "Toggle_Items_Drop_LockWovenEnchanter";
+                                        Drop.lock_woven_enchanter_toggle = toggle;
+                                        Text label = toggle.GetComponentInChildren<Text>(true);
+                                        if (!label.IsNullOrDestroyed())
+                                        {
+                                            label.text = "锁定编制附魔次数";
+                                        }
+                                        Events.StyleToggle(toggle);
+                                    }
+                                }
+                                RectTransform dropContentRt = items_drop_content.GetComponent<RectTransform>();
+                                if (!dropContentRt.IsNullOrDestroyed() && dropContentRt.sizeDelta.y < 1200f)
+                                {
+                                    dropContentRt.sizeDelta = new Vector2(dropContentRt.sizeDelta.x, 1200f);
+                                }
                             }
 
                             GameObject items_pickup_content = Functions.GetViewportContent(content_obj, "Items_Pickup", "Items_Pickup_Content");
@@ -3766,6 +3807,7 @@ namespace LastEpoch_Hud.Scripts
                             Drop.weaver_will_toggle.isOn = Save_Manager.instance.data.Items.Drop.Enable_WeaverWill;
                             Drop.weaver_will_slider_min.value = Save_Manager.instance.data.Items.Drop.WeaverWill_Min;
                             Drop.weaver_will_slider_max.value = Save_Manager.instance.data.Items.Drop.WeaverWill_Max;
+                            if (!Drop.lock_woven_enchanter_toggle.IsNullOrDestroyed()) { Drop.lock_woven_enchanter_toggle.isOn = Save_Manager.instance.data.Items.Drop.Enable_LockWovenEnchanter; }
                             
                             //Pickup
                             Pickup.autopickup_gold_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoPickup_Gold;
@@ -3994,6 +4036,7 @@ namespace LastEpoch_Hud.Scripts
                     public static Text weaver_will_text = null;
                     public static Slider weaver_will_slider_min = null;
                     public static Slider weaver_will_slider_max = null;
+                    public static Toggle lock_woven_enchanter_toggle = null;
                 }
                 public class Pickup
                 {

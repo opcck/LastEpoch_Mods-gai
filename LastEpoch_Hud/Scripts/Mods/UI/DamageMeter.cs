@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppLE.AssetBundles;
 using Il2CppTMPro;
@@ -34,8 +34,24 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
         public static float TotalDamageDeal = 0f;
         public static float RecordedSeconds = 0f; //Game time spent recording since the first hit, pauses excluded
         public static Text Title_Text = null;
+        public const int DamageType_Percent = 0;
         public const int DamageType_Flat = 1;
         public const int DamageType_Dps = 2;
+
+        // 7 大直伤元素定义 (严格遵循游戏官方中文：4 为“腐化”，非死灵)
+        public static readonly string[] ElementNames = { "物理", "火焰", "冰霜", "闪电", "腐化", "虚空", "毒素" };
+        public static readonly Color[] ElementColors = {
+            new Color(0.75f, 0.65f, 0.55f), // 物理 (棕灰)
+            new Color(1.0f, 0.35f, 0.10f),  // 火焰 (烈焰红橙)
+            new Color(0.25f, 0.75f, 1.0f),  // 冰霜 (冰蓝)
+            new Color(1.0f, 0.90f, 0.15f),  // 闪电 (明黄)
+            new Color(0.15f, 0.90f, 0.55f), // 腐化 (翡翠绿，严禁称死灵)
+            new Color(0.65f, 0.25f, 0.95f), // 虚空 (虚空紫)
+            new Color(0.40f, 0.85f, 0.15f)  // 毒素 (毒素草绿)
+        };
+        public static readonly Color ColorDot = new Color(0.85f, 0.45f, 0.20f);  // 持续伤害 DoT
+        public static readonly Color ColorCrit = new Color(1.0f, 0.84f, 0.0f);   // 暴击伤害
+        public static readonly Color ColorHit = new Color(0.60f, 0.70f, 0.80f);   // 普通击中
 
         public static float Dps(float damage)
         {
@@ -46,6 +62,24 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
             if (value >= 1000000f) { return (value / 1000000f).ToString("0.00") + "M"; }
             if (value >= 10000f) { return (value / 1000f).ToString("0.0") + "k"; }
             return System.Convert.ToInt32(value).ToString();
+        }
+        public static string FormatValueByMode(float damage, float totalSkillDamage)
+        {
+            int mode = 0;
+            if (!DamageType_Dropdown.IsNullOrDestroyed()) { mode = DamageType_Dropdown.value; }
+            if (mode == DamageType_Flat)
+            {
+                return FormatNumber(damage);
+            }
+            else if (mode == DamageType_Dps)
+            {
+                return FormatNumber(Dps(damage)) + "/s";
+            }
+            else
+            {
+                float pct = totalSkillDamage > 0f ? (damage * 100f / totalSkillDamage) : 0f;
+                return pct.ToString("0.0") + " %";
+            }
         }
 
         //Settings
@@ -66,6 +100,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
         public static System.Collections.Generic.List<GameObject> details_skills = new System.Collections.Generic.List<GameObject>();
         public static string Details_TopSkillsName = "TopSkill_";
         public static Color[] colors = { Color.green, Color.blue, Color.gray, Color.cyan, Color.green, Color.white, Color.grey, Color.magenta, Color.black, Color.yellow };
+        public static int current_details_skill_index = -1;
 
         public static int Frames = 30; //Update append every x frames (to avoid too much performance cost)
         public static int Current_Frame = 0;
@@ -136,7 +171,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
             if (Scenes.IsGameScene())
             {
                 if (!UI.Initialized) { return; }
-                if (!MenuText.IsNullOrDestroyed()) { MenuText.text = "Damage Meter"; }
+                if (!MenuText.IsNullOrDestroyed()) { MenuText.text = "伤害统计"; }
                 if (!DamageMeter_obj.IsNullOrDestroyed())
                 {
                     if (Input.GetKeyDown(ToggleKey())) { DamageMeter_obj.active = !DamageMeter_obj.active; }
@@ -301,28 +336,35 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                                     DamageType_Dropdown = dropdown.GetComponent<Dropdown>();
                                     if (!DamageType_Dropdown.IsNullOrDestroyed())
                                     {
-                                        //The prefab only ships Percent and Flat
-                                        if (DamageType_Dropdown.options.Count <= DamageType_Dps)
+                                        DamageType_Dropdown.options.Clear();
+                                        DamageType_Dropdown.options.Add(new Dropdown.OptionData("伤害占比 (%)"));
+                                        DamageType_Dropdown.options.Add(new Dropdown.OptionData("总伤害数值"));
+                                        DamageType_Dropdown.options.Add(new Dropdown.OptionData("每秒伤害 (DPS)"));
+
+                                        int savedType = 0;
+                                        if (!Save_Manager.instance.IsNullOrDestroyed()) { savedType = Save_Manager.instance.data.DamageMeter.DamageType; }
+                                        if (savedType >= 0 && savedType <= DamageType_Dps)
                                         {
-                                            DamageType_Dropdown.options.Add(new Dropdown.OptionData("Damage per Second"));
+                                            DamageType_Dropdown.value = savedType;
                                         }
-                                        if ((Save_Manager.instance.data.DamageMeter.DamageType > 0) &&
-                                            (Save_Manager.instance.data.DamageMeter.DamageType <= DamageType_Dps))
-                                        {
-                                            DamageType_Dropdown.value = Save_Manager.instance.data.DamageMeter.DamageType;
-                                        }
-                                        else { DamageType_Dropdown.value = 0; }                                            
+                                        else { DamageType_Dropdown.value = 0; }
                                         Events.Set_DropDown_Event(DamageType_Dropdown, Events.DamageType_Dropdown_Action);
                                     }                                    
                                 }
                                 GameObject toggle = Functions.GetChild(content, "SeparateDot");
-                                if (!dropdown.IsNullOrDestroyed())
+                                if (!toggle.IsNullOrDestroyed())
                                 {
                                     SeparateDot_Toggle = toggle.GetComponent<Toggle>();
                                     if (!SeparateDot_Toggle.IsNullOrDestroyed())
                                     {
                                         SeparateDot_Toggle.isOn = Save_Manager.instance.data.DamageMeter.SeparateHitAndDot;
                                         Events.Set_Toggle_Event(SeparateDot_Toggle, Events.SeparateDot_Toggle_Action);
+                                        GameObject labelObj = Functions.GetChild(toggle, "Label");
+                                        if (!labelObj.IsNullOrDestroyed())
+                                        {
+                                            Text labelText = labelObj.GetComponent<Text>();
+                                            if (!labelText.IsNullOrDestroyed()) { labelText.text = "分离持续伤害 (DoT)"; }
+                                        }
                                     }                                    
                                 }
                             }
@@ -427,7 +469,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                     Main.logger_instance.Msg("Damage Meter : UI initialized, toggle with " + ToggleKey() + " or the Shop button");
                 }
             }                        
-            public static void AddSkill(string ability_name, float damage, bool hit, bool crit, bool kill, float overkill, string target_name, Sprite icon_override)
+            public static void AddSkill(string ability_name, float damage, bool hit, bool crit, bool kill, float overkill, string target_name, Sprite icon_override, float[] ratios = null)
             {
                 if (!Skill_prefab.IsNullOrDestroyed())
                 {
@@ -447,6 +489,36 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                     overkills.Add(overkill);
                     System.Collections.Generic.List<string> target_names = new System.Collections.Generic.List<string>();
                     target_names.Add(target_name);
+
+                    float[] elemDamages = new float[7];
+                    int[] elemHits = new int[7];
+                    float[] elemMin = new float[7];
+                    float[] elemMax = new float[7];
+                    if (hit || crit)
+                    {
+                        if (ratios == null || ratios.Length < 7)
+                        {
+                            elemDamages[0] = damage;
+                            elemHits[0] = 1;
+                            elemMin[0] = damage;
+                            elemMax[0] = damage;
+                        }
+                        else
+                        {
+                            for (int e = 0; e < 7; e++)
+                            {
+                                float part = damage * ratios[e];
+                                if (part > 0f)
+                                {
+                                    elemDamages[e] = part;
+                                    elemHits[e] = 1;
+                                    elemMin[e] = part;
+                                    elemMax[e] = part;
+                                }
+                            }
+                        }
+                    }
+
                     Skills.Add(new Skill
                     {
                         Obj = skill_obj,
@@ -457,18 +529,22 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                         Crits = crits,
                         Kills = kills,
                         Overkills = overkills,
-                        TargetName = target_names
+                        TargetName = target_names,
+                        ElementDamages = elemDamages,
+                        ElementHits = elemHits,
+                        ElementMin = elemMin,
+                        ElementMax = elemMax
                     });
                 }
             }
             public static void SetTitle()
             {
                 if (Title_Text.IsNullOrDestroyed()) { return; }
-                if (RecordedSeconds <= 0f) { Title_Text.text = "DPS"; }
+                if (RecordedSeconds <= 0f) { Title_Text.text = "伤害统计 (DPS)"; }
                 else
                 {
                     System.TimeSpan elapsed = System.TimeSpan.FromSeconds(RecordedSeconds);
-                    Title_Text.text = "DPS " + FormatNumber(Dps(TotalDamageDeal)) + "  (" + (int)elapsed.TotalMinutes + ":" + elapsed.Seconds.ToString("00") + ")";
+                    Title_Text.text = "DPS: " + FormatNumber(Dps(TotalDamageDeal)) + "  (时长 " + (int)elapsed.TotalMinutes + ":" + elapsed.Seconds.ToString("00") + ")";
                 }
             }
             public static void Update()
@@ -794,6 +870,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
             {
                 if (i < Skills.Count)
                 {
+                    current_details_skill_index = i;
                     if ((!Details_BottomCircleContent.IsNullOrDestroyed()) && (!Details_BottomContent.IsNullOrDestroyed()))
                     {
                         foreach (GameObject go in details_skills) //Show selected
@@ -830,145 +907,117 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                         GameObject Circle = Functions.GetChild(Details_BottomCircleContent, "BottomCircle");
                         RectTransform CircleRectTransform = null;
                         if (!Circle.IsNullOrDestroyed()) { CircleRectTransform = Circle.GetComponent<RectTransform>(); }
+
                         float total_damage = 0f;
-                        
+                        foreach (float f in Skills[i].Damages) { total_damage += f; }   //Total damage
+
                         float dot_damage = 0f;
-                        float dot_damage_percent = 0f;
                         int dot_count = 0;
-                        int dot_miss_count = 0;
                         float dot_min = 0f;
                         float dot_avg = 0f;
                         float dot_max = 0f;
 
                         float hit_damage = 0f;
-                        float hit_damage_percent = 0f;
                         int hit_count = 0;
-                        int hit_miss_count = 0;
                         float hit_min = 0f;
                         float hit_avg = 0f;
                         float hit_max = 0f;
 
                         float crit_damage = 0f;
-                        float crit_damage_percent = 0f;
                         int crit_count = 0;
-                        int crit_miss_count = 0;
                         float crit_min = 0f;
                         float crit_avg = 0f;
                         float crit_max = 0f;
 
-                        foreach (float f in Skills[i].Damages) { total_damage += f; }   //Total damage
                         for (int j = 0; j < Skills[i].Damages.Count; j++)
                         {                            
+                            float dmg = Skills[i].Damages[j];
                             if ((!Skills[i].Hits[j]) && (!Skills[i].Crits[j]))      //dot
                             {
-                                if (dot_damage == 0f)
-                                {
-                                    dot_min = Skills[i].Damages[j];
-                                    dot_max = Skills[i].Damages[j];
-                                }
-                                else
-                                {
-                                    if (Skills[i].Damages[j] < dot_min)
-                                    {
-                                        dot_min = Skills[i].Damages[j];
-                                    }
-                                    if (Skills[i].Damages[j] > dot_max)
-                                    {
-                                        dot_max = Skills[i].Damages[j];
-                                    }
-                                }
-                                dot_damage += Skills[i].Damages[j];
+                                if (dot_count == 0 || dmg < dot_min) { dot_min = dmg; }
+                                if (dmg > dot_max) { dot_max = dmg; }
+                                dot_damage += dmg;
                                 dot_count++;
-                                if (Skills[i].Damages[j] == 0f) { dot_miss_count++; }
                             }
                             else if (!Skills[i].Crits[j])                           //hit
                             {
-                                if (hit_damage == 0f)
-                                {
-                                    hit_min = Skills[i].Damages[j];
-                                    hit_max = Skills[i].Damages[j];
-                                }
-                                else
-                                {
-                                    if (Skills[i].Damages[j] < hit_min)
-                                    {
-                                        hit_min = Skills[i].Damages[j];
-                                    }
-                                    if (Skills[i].Damages[j] > hit_max)
-                                    {
-                                        hit_max = Skills[i].Damages[j];
-                                    }
-                                }
-                                hit_damage += Skills[i].Damages[j];
+                                if (hit_count == 0 || dmg < hit_min) { hit_min = dmg; }
+                                if (dmg > hit_max) { hit_max = dmg; }
+                                hit_damage += dmg;
                                 hit_count++;
-                                if (Skills[i].Damages[j] == 0f) { hit_miss_count++; }
                             }
                             else                                                    //crit
                             {
-                                if (crit_damage == 0f)
-                                {
-                                    crit_min = Skills[i].Damages[j];
-                                    crit_max = Skills[i].Damages[j];
-                                }
-                                else
-                                {
-                                    if (Skills[i].Damages[j] < crit_min)
-                                    {
-                                        crit_min = Skills[i].Damages[j];
-                                    }
-                                    if (Skills[i].Damages[j] > crit_max)
-                                    {
-                                        crit_max = Skills[i].Damages[j];
-                                    }
-                                }
-                                crit_damage += Skills[i].Damages[j];
+                                if (crit_count == 0 || dmg < crit_min) { crit_min = dmg; }
+                                if (dmg > crit_max) { crit_max = dmg; }
+                                crit_damage += dmg;
                                 crit_count++;
-                                if (Skills[i].Damages[j] == 0f) { crit_miss_count++; }
                             }
                         }
-                        dot_avg = dot_damage / dot_count;
-                        hit_avg = hit_damage / hit_count;
-                        crit_avg = crit_damage / crit_count;
-                        dot_damage_percent = ((dot_damage * 100) / total_damage);
-                        hit_damage_percent = ((hit_damage * 100) / total_damage);
-                        crit_damage_percent = ((crit_damage * 100) / total_damage);
+
+                        if (dot_count > 0) { dot_avg = dot_damage / dot_count; }
+                        if (hit_count > 0) { hit_avg = hit_damage / hit_count; }
+                        if (crit_count > 0) { crit_avg = crit_damage / crit_count; }
 
                         float rotation = 0f;
-                        int color_index = 0;
+
+                        // 1. 直伤 7 大元素渲染与饼图绘制
+                        if (Skills[i].ElementDamages != null)
+                        {
+                            for (int e = 0; e < 7; e++)
+                            {
+                                float elem_dmg = Skills[i].ElementDamages[e];
+                                if (elem_dmg > 0f)
+                                {
+                                    float elem_pct = total_damage > 0f ? ((elem_dmg * 100f) / total_damage) : 0f;
+                                    CreateCircle(Details_BottomCircleContent, Circle, CircleRectTransform, elem_pct, rotation, ElementColors[e]);
+                                    rotation += (elem_pct / 100f) * 360f;
+
+                                    if (!Details_BottomContent_prefab.IsNullOrDestroyed())
+                                    {
+                                        int count = Skills[i].ElementHits != null ? Skills[i].ElementHits[e] : 1;
+                                        int min = (int)(Skills[i].ElementMin != null ? Skills[i].ElementMin[e] : elem_dmg);
+                                        int avg = (int)(count > 0 ? elem_dmg / count : elem_dmg);
+                                        int max = (int)(Skills[i].ElementMax != null ? Skills[i].ElementMax[e] : elem_dmg);
+                                        string valStr = FormatValueByMode(elem_dmg, total_damage);
+                                        CreateDetailsBottom(ElementColors[e], ElementNames[e] + " (直伤)", min, avg, max, count, valStr);
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. 持续伤害 (DoT) 渲染与饼图绘制
                         if (dot_damage > 0f)
                         {
-                            CreateCircle(Details_BottomCircleContent, Circle, CircleRectTransform, dot_damage_percent, rotation, color_index);
-                            rotation += (dot_damage_percent / 100) * 360;
+                            float dot_damage_percent = total_damage > 0f ? ((dot_damage * 100f) / total_damage) : 0f;
+                            CreateCircle(Details_BottomCircleContent, Circle, CircleRectTransform, dot_damage_percent, rotation, ColorDot);
+                            rotation += (dot_damage_percent / 100f) * 360f;
+
                             if (!Details_BottomContent_prefab.IsNullOrDestroyed())
                             {
-                                CreateDetailsBottom(color_index, "Dot", System.Convert.ToInt32(dot_min), System.Convert.ToInt32(dot_avg), System.Convert.ToInt32(dot_max), dot_count, dot_damage_percent);
+                                string dotValStr = FormatValueByMode(dot_damage, total_damage);
+                                CreateDetailsBottom(ColorDot, "持续伤害 (DoT)", System.Convert.ToInt32(dot_min), System.Convert.ToInt32(dot_avg), System.Convert.ToInt32(dot_max), dot_count, dotValStr);
                             }
-                            color_index++;
                         }
-                        if (hit_damage > 0f)
+
+                        // 3. 击中质量统计：暴击与普通击中（直伤汇总分析）
+                        if (!Details_BottomContent_prefab.IsNullOrDestroyed())
                         {
-                            CreateCircle(Details_BottomCircleContent, Circle, CircleRectTransform, hit_damage_percent, rotation, color_index);
-                            rotation += (hit_damage_percent / 100) * 360;
-                            if (!Details_BottomContent_prefab.IsNullOrDestroyed())
+                            if (crit_damage > 0f)
                             {
-                                CreateDetailsBottom(color_index, "Hit", System.Convert.ToInt32(hit_min), System.Convert.ToInt32(hit_avg), System.Convert.ToInt32(hit_max), hit_count, hit_damage_percent);
+                                string critValStr = FormatValueByMode(crit_damage, total_damage);
+                                CreateDetailsBottom(ColorCrit, "★ 暴击 (汇总)", System.Convert.ToInt32(crit_min), System.Convert.ToInt32(crit_avg), System.Convert.ToInt32(crit_max), crit_count, critValStr);
                             }
-                            color_index++;
-                        }
-                        if (crit_damage > 0f)
-                        {
-                            CreateCircle(Details_BottomCircleContent, Circle, CircleRectTransform, crit_damage_percent, rotation, color_index);
-                            rotation += (crit_damage_percent / 100) * 360;
-                            if (!Details_BottomContent_prefab.IsNullOrDestroyed())
+                            if (hit_damage > 0f)
                             {
-                                CreateDetailsBottom(color_index, "Crit", System.Convert.ToInt32(crit_min), System.Convert.ToInt32(crit_avg), System.Convert.ToInt32(crit_max), crit_count, crit_damage_percent);
+                                string hitValStr = FormatValueByMode(hit_damage, total_damage);
+                                CreateDetailsBottom(ColorHit, "普通击中 (汇总)", System.Convert.ToInt32(hit_min), System.Convert.ToInt32(hit_avg), System.Convert.ToInt32(hit_max), hit_count, hitValStr);
                             }
-                            color_index++;
                         }
                     }
                 }
             }
-            public static void CreateCircle(GameObject parent, GameObject Circle, RectTransform CircleRectTransform, float percent, float rotation, int color_index)
+            public static void CreateCircle(GameObject parent, GameObject Circle, RectTransform CircleRectTransform, float percent, float rotation, Color color)
             {
                 GameObject circle = Instantiate(Circle, Vector3.zero, Quaternion.identity);
                 DontDestroyOnLoad(circle);
@@ -982,26 +1031,27 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                 Image details_topcircle_image = circle.GetComponent<Image>();
                 if (!details_topcircle_image.IsNullOrDestroyed())
                 {
-                    details_topcircle_image.color = colors[color_index];
-                    details_topcircle_image.fillAmount = percent / 100;
+                    details_topcircle_image.color = color;
+                    details_topcircle_image.fillAmount = percent / 100f;
                 }
                 circle.transform.Rotate(new Vector3(0, 0, (rotation * -1)));
                 circle.active = true;
             }
-            public static void CreateDetailsBottom(int color_index, string type, int min, int avg, int max, int count, float percent)
+            public static void CreateDetailsBottom(Color color, string type, int min, int avg, int max, int count, string displayValue)
             {
                 GameObject details_bottom = Instantiate(Details_BottomContent_prefab, Vector3.zero, Quaternion.identity);
                 DontDestroyOnLoad(details_bottom);
                 details_bottom.transform.SetParent(Details_BottomContent.transform);
-                GameObject color = Functions.GetChild(details_bottom, "Color");
-                if (!color.IsNullOrDestroyed())
+                GameObject color_obj = Functions.GetChild(details_bottom, "Color");
+                if (!color_obj.IsNullOrDestroyed())
                 {
-                    GameObject image_obj = Functions.GetChild(color, "Image");
+                    GameObject image_obj = Functions.GetChild(color_obj, "Image");
+                    if (!image_obj.IsNullOrDestroyed())
                     {
                         Image image = image_obj.GetComponent<Image>();
                         if (!image.IsNullOrDestroyed())
                         {
-                            image.color = colors[color_index];
+                            image.color = color;
                         }
                     }
                 }
@@ -1028,7 +1078,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                 if (!damage_max.IsNullOrDestroyed())
                 {
                     Text text = damage_max.GetComponent<Text>();
-                    if (!text.IsNullOrDestroyed()) { text.text = System.Convert.ToString(max); ; }
+                    if (!text.IsNullOrDestroyed()) { text.text = System.Convert.ToString(max); }
                 }
                 GameObject damage_count = Functions.GetChild(details_bottom, "Count");
                 if (!damage_count.IsNullOrDestroyed())
@@ -1040,7 +1090,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                 if (!damage_percent.IsNullOrDestroyed())
                 {
                     Text text = damage_percent.GetComponent<Text>();
-                    if (!text.IsNullOrDestroyed()) { text.text = System.Convert.ToInt32(percent) + " %"; }
+                    if (!text.IsNullOrDestroyed()) { text.text = displayValue; }
                 }
                 details_bottom.active = true;
             }
@@ -1110,6 +1160,10 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                 {
                     Save_Manager.instance.data.DamageMeter.DamageType = DamageType_Dropdown.value;
                 }
+                if (Details_panel != null && Details_panel.active && current_details_skill_index >= 0)
+                {
+                    UI.ShowDetails_Bottom(current_details_skill_index);
+                }
             }
 
             public static readonly System.Action<bool> SeparateDot_Toggle_Action = new System.Action<bool>(Set_SeparateDot_Enable);
@@ -1145,6 +1199,8 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
         }
         public class DamageDeal
         {
+            public static float[] currentHitRatios = null;
+
             [HarmonyPatch(typeof(AbilityEventListener), "DetailedAbilityEvent")]
             public class AbilityEventListener_DetailedAbilityEvent
             {
@@ -1166,13 +1222,15 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                         }
                         if ((!target_is_player) && (!target_is_summon))
                         {
-                            Record(__0.ability.abilityName, __0.damageDealt, __0.hit, __0.crit, __0.kill, __0.overkill, __0.target.name, null);
+                            float[] ratios = currentHitRatios;
+                            currentHitRatios = null;
+                            Record(__0.ability.abilityName, __0.damageDealt, __0.hit, __0.crit, __0.kill, __0.overkill, __0.target.name, null, ratios);
                         }
                     }
                 }
             }
 
-            static void Record(string name, float damage, bool hit, bool crit, bool kill, float overkill, string target_name, Sprite icon)
+            static void Record(string name, float damage, bool hit, bool crit, bool kill, float overkill, string target_name, Sprite icon, float[] ratios = null)
             {
                 TotalDamageDeal += damage;
                 foreach (Skill skill in Skills)
@@ -1185,10 +1243,43 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
                         skill.Kills.Add(kill);
                         skill.Overkills.Add(overkill);
                         skill.TargetName.Add(target_name);
+                        if (hit || crit)
+                        {
+                            ApplyElementRatios(skill, damage, ratios);
+                        }
                         return;
                     }
                 }
-                UI.AddSkill(name, damage, hit, crit, kill, overkill, target_name, icon);
+                UI.AddSkill(name, damage, hit, crit, kill, overkill, target_name, icon, ratios);
+            }
+
+            static void ApplyElementRatios(Skill skill, float damage, float[] ratios)
+            {
+                if (skill.ElementDamages == null) { skill.ElementDamages = new float[7]; }
+                if (skill.ElementHits == null) { skill.ElementHits = new int[7]; }
+                if (skill.ElementMin == null) { skill.ElementMin = new float[7]; }
+                if (skill.ElementMax == null) { skill.ElementMax = new float[7]; }
+
+                if (ratios == null || ratios.Length < 7)
+                {
+                    skill.ElementDamages[0] += damage;
+                    skill.ElementHits[0]++;
+                    if (skill.ElementMin[0] == 0f || damage < skill.ElementMin[0]) { skill.ElementMin[0] = damage; }
+                    if (damage > skill.ElementMax[0]) { skill.ElementMax[0] = damage; }
+                    return;
+                }
+
+                for (int k = 0; k < 7; k++)
+                {
+                    float part = damage * ratios[k];
+                    if (part > 0f)
+                    {
+                        skill.ElementDamages[k] += part;
+                        skill.ElementHits[k]++;
+                        if (skill.ElementMin[k] == 0f || part < skill.ElementMin[k]) { skill.ElementMin[k] = part; }
+                        if (part > skill.ElementMax[k]) { skill.ElementMax[k] = part; }
+                    }
+                }
             }
 
             static bool IsPlayerOrSummon(Actor actor)
@@ -1227,18 +1318,56 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
             public class ProtectionClass_ApplyDamage
             {
                 [HarmonyPrefix]
-                static void Prefix(ProtectionClass __instance, DamageSource __1)
+                static void Prefix(ProtectionClass __instance, DamageStats __0, DamageSource __1, Actor __3)
                 {
                     current_ailment = null;
                     current_target = null;
-                    if (!On || __1 == null || !Scenes.IsGameScene()) { return; }
-                    var info = __1.GetDamageSourceInfo();
-                    Ailment ailment = info.Item1;
-                    if (ailment.IsNullOrDestroyed()) { return; } //Hits are counted by DetailedAbilityEvent
+                    if (!On || !Scenes.IsGameScene()) { return; }
+
                     Actor target = __instance.actor;
-                    if (target.IsNullOrDestroyed() || !IsPlayerOrSummon(info.Item5) || IsPlayerOrSummon(target)) { return; }
-                    current_ailment = ailment;
-                    current_target = target.health;
+                    if (target.IsNullOrDestroyed()) { return; }
+
+                    if (__1 != null)
+                    {
+                        var info = __1.GetDamageSourceInfo();
+                        Ailment ailment = info.Item1;
+                        if (!ailment.IsNullOrDestroyed())
+                        {
+                            if (!IsPlayerOrSummon(info.Item5) || IsPlayerOrSummon(target)) { return; }
+                            current_ailment = ailment;
+                            current_target = target.health;
+                            return;
+                        }
+                    }
+
+                    // 直伤 Hit 元素比例捕获
+                    Actor attacker = __3;
+                    if (attacker.IsNullOrDestroyed() && __1 != null)
+                    {
+                        try { attacker = __1.GetDamageSourceInfo().Item5; } catch { }
+                    }
+                    if (!IsPlayerOrSummon(attacker) || IsPlayerOrSummon(target)) { return; }
+
+                    if (__0 != null && __0.damage != null)
+                    {
+                        float sum = 0f;
+                        int len = System.Math.Min(7, __0.damage.Length);
+                        for (int k = 0; k < len; k++)
+                        {
+                            float d = __0.damage[k];
+                            if (d > 0f) { sum += d; }
+                        }
+                        if (sum > 0f)
+                        {
+                            float[] ratios = new float[7];
+                            for (int k = 0; k < len; k++)
+                            {
+                                float d = __0.damage[k];
+                                if (d > 0f) { ratios[k] = d / sum; }
+                            }
+                            currentHitRatios = ratios;
+                        }
+                    }
                 }
                 [HarmonyPostfix]
                 static void Postfix()
@@ -1303,6 +1432,7 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
             public static void ClearPending()
             {
                 pending_ailments.Clear();
+                currentHitRatios = null;
             }
         }
         public struct Skill
@@ -1316,6 +1446,12 @@ namespace LastEpoch_Hud.Scripts.Mods.UI
             public System.Collections.Generic.List<bool> Kills;
             public System.Collections.Generic.List<float> Overkills;
             public System.Collections.Generic.List<string> TargetName;
+
+            // 7 大直伤元素数据 (0:物理, 1:火焰, 2:冰霜, 3:闪电, 4:腐化, 5:虚空, 6:毒素)
+            public float[] ElementDamages;
+            public int[] ElementHits;
+            public float[] ElementMin;
+            public float[] ElementMax;
         }
     }
 }
