@@ -1,4 +1,4 @@
-﻿using HarmonyLib;
+using HarmonyLib;
 using Il2Cpp;
 
 namespace LastEpoch_Hud.Scripts.Mods.Items
@@ -8,6 +8,77 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
         public static bool first_time = true;
         public static bool forge = false; //Disable when forge
         public static ItemData item = null;
+
+        public static void TryRemoveCorruption(ItemData targetItem)
+        {
+            if (targetItem.IsNullOrDestroyed()) return;
+            if (Save_Manager.instance.IsNullOrDestroyed() || Save_Manager.instance.data.IsNullOrDestroyed()) return;
+            if (!Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod) return;
+            if (!Save_Manager.instance.data.Items.CraftingSlot.Enable_RemoveCorruption) return;
+
+            if (targetItem.corrupted)
+            {
+                targetItem.corrupted = false;
+                if (targetItem.forgingPotential == 0 && !Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial)
+                {
+                    targetItem.forgingPotential = 255;
+                }
+                targetItem.RefreshIDAndValues();
+
+                if (!Refs_Manager.craft_slot_manager.IsNullOrDestroyed())
+                {
+                    Refs_Manager.craft_slot_manager.UpdateItemInfo();
+                    Refs_Manager.craft_slot_manager.UpdateForgeButton();
+                }
+            }
+        }
+
+        public static void TryRemoveCorruptionOnCurrentItem()
+        {
+            if (item.IsNullOrDestroyed() && !Refs_Manager.craft_slot_manager.IsNullOrDestroyed())
+            {
+                OneItemContainer mainContainer = Refs_Manager.craft_slot_manager.GetMain();
+                if (!mainContainer.IsNullOrDestroyed() && !mainContainer.content.IsNullOrDestroyed())
+                {
+                    item = mainContainer.content.data;
+                }
+            }
+            TryRemoveCorruption(item);
+        }
+
+        public static void TryApplyNoCost(ItemData targetItem)
+        {
+            if (!targetItem.IsNullOrDestroyed() && !Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+            {
+                if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                {
+                    if (targetItem.forgingPotential == 0 && !Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial)
+                    {
+                        targetItem.forgingPotential = 255;
+                        targetItem.RefreshIDAndValues();
+
+                        if (!Refs_Manager.craft_slot_manager.IsNullOrDestroyed())
+                        {
+                            Refs_Manager.craft_slot_manager.UpdateItemInfo();
+                            Refs_Manager.craft_slot_manager.UpdateForgeButton();
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void TryApplyNoCostOnCurrentItem()
+        {
+            if (item.IsNullOrDestroyed() && !Refs_Manager.craft_slot_manager.IsNullOrDestroyed())
+            {
+                OneItemContainer mainContainer = Refs_Manager.craft_slot_manager.GetMain();
+                if (!mainContainer.IsNullOrDestroyed() && !mainContainer.content.IsNullOrDestroyed())
+                {
+                    item = mainContainer.content.data;
+                }
+            }
+            TryApplyNoCost(item);
+        }
 
         [HarmonyPatch(typeof(CraftingManager), "OnMainItemChange")]
         public class CraftingManager_OnMainItemChange
@@ -31,6 +102,26 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
                     {
                         if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod)
                         {
+                            if (Save_Manager.instance.data.Items.CraftingSlot.Enable_RemoveCorruption)
+                            {
+                                if (item.corrupted)
+                                {
+                                    item.corrupted = false;
+                                    if (item.forgingPotential == 0 && !Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial)
+                                    {
+                                        item.forgingPotential = 255;
+                                    }
+                                }
+                            }
+
+                            if (Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                            {
+                                if (item.forgingPotential == 0 && !Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial)
+                                {
+                                    item.forgingPotential = 255;
+                                }
+                            }
+
                             if (Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial)
                             {
                                 Items_Drop_ForginPotencial.Keep(item, (byte)Save_Manager.instance.data.Items.CraftingSlot.ForginPotencial);
@@ -148,6 +239,11 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
                             }
 
                             item.RefreshIDAndValues();
+                            if (Save_Manager.instance.data.Items.CraftingSlot.Enable_RemoveCorruption && !Refs_Manager.craft_slot_manager.IsNullOrDestroyed())
+                            {
+                                Refs_Manager.craft_slot_manager.UpdateItemInfo();
+                                Refs_Manager.craft_slot_manager.UpdateForgeButton();
+                            }
                         }
                     }
                 }
@@ -168,16 +264,174 @@ namespace LastEpoch_Hud.Scripts.Mods.Items
         [HarmonyPatch(typeof(CraftingSlotManager), "Forge")]
         public class CraftingSlotManager_Forge
         {
+            private static int preForgePotential = 0;
+
             [HarmonyPrefix]
             static void Prefix(ref CraftingSlotManager __instance)
             {
                 forge = true;
+                preForgePotential = 0;
+
+                if (!Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+                {
+                    if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                    {
+                        if (!Refs_Manager.item_containers_manager.IsNullOrDestroyed() && 
+                            !Refs_Manager.item_containers_manager.craftingManager.IsNullOrDestroyed())
+                        {
+                            Refs_Manager.item_containers_manager.craftingManager.debugNoForgingPotentialCost = true;
+                        }
+
+                        if (!item.IsNullOrDestroyed())
+                        {
+                            preForgePotential = item.forgingPotential;
+                        }
+                    }
+                }
             }
 
             [HarmonyPostfix]
             static void Postfix(ref CraftingSlotManager __instance)
             {
+                if (!Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+                {
+                    if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                    {
+                        // 潜能保底：若锻造后潜能减少或为0，强制恢复为锻造前潜能
+                        if (!item.IsNullOrDestroyed())
+                        {
+                            if (preForgePotential > 0 && (item.forgingPotential < preForgePotential || item.forgingPotential == 0))
+                            {
+                                item.forgingPotential = (byte)preForgePotential;
+                                item.RefreshIDAndValues();
+                            }
+                            else if (item.forgingPotential == 0)
+                            {
+                                item.forgingPotential = 255;
+                                item.RefreshIDAndValues();
+                            }
+                        }
+
+                        if (!__instance.IsNullOrDestroyed())
+                        {
+                            __instance.UpdateItemInfo();
+                            __instance.UpdateForgeButton();
+                        }
+                    }
+                }
                 forge = false;
+            }
+        }
+
+        [HarmonyPatch(typeof(ItemContainer), "TryRemoveItem", new System.Type[] { typeof(ItemContainerEntry), typeof(int), typeof(Context) })]
+        public class ItemContainer_TryRemoveItem
+        {
+            [HarmonyPrefix]
+            static bool Prefix(ItemContainer __instance, ItemContainerEntry entry, int amount, Context context, ref bool __result)
+            {
+                if (!Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+                {
+                    if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                    {
+                        if (forge)
+                        {
+                            if (!entry.IsNullOrDestroyed() && !entry.data.IsNullOrDestroyed())
+                            {
+                                byte type = entry.data.itemType;
+                                // 102 为符文，103 为雕文
+                                if (type == 102 || type == 103)
+                                {
+                                    __result = true;
+                                    return false; // 拦截扣减，数量不减！
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(ItemContainer), "RemoveItem", new System.Type[] { typeof(ItemContainerEntry), typeof(Context) })]
+        public class ItemContainer_RemoveItem
+        {
+            [HarmonyPrefix]
+            static bool Prefix(ItemContainer __instance, ItemContainerEntry entry, Context context)
+            {
+                if (!Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+                {
+                    if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                    {
+                        if (forge)
+                        {
+                            if (!entry.IsNullOrDestroyed() && !entry.data.IsNullOrDestroyed())
+                            {
+                                byte type = entry.data.itemType;
+                                if (type == 102 || type == 103)
+                                {
+                                    return false; // 拦截移除！
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(CraftingManager), "EmptyModifierSlot")]
+        public class CraftingManager_EmptyModifierSlot
+        {
+            [HarmonyPrefix]
+            static bool Prefix(CraftingManager __instance, bool syncShardChangesIfOnServer, ref bool __result)
+            {
+                if (!Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+                {
+                    if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                    {
+                        if (forge)
+                        {
+                            if (!__instance.modifier.IsNullOrDestroyed() && !__instance.modifier.content.IsNullOrDestroyed())
+                            {
+                                // 符文保留在槽位中，支持连点
+                                if (__instance.modifier.content.data.itemType == 102)
+                                {
+                                    __result = false;
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(CraftingManager), "EmptySupportSlot")]
+        public class CraftingManager_EmptySupportSlot
+        {
+            [HarmonyPrefix]
+            static bool Prefix(CraftingManager __instance, ref bool __result)
+            {
+                if (!Save_Manager.instance.IsNullOrDestroyed() && !Save_Manager.instance.data.IsNullOrDestroyed())
+                {
+                    if (Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod && Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost)
+                    {
+                        if (forge)
+                        {
+                            if (!__instance.support.IsNullOrDestroyed() && !__instance.support.content.IsNullOrDestroyed())
+                            {
+                                // 雕文保留在槽位中，支持连点
+                                if (__instance.support.content.data.itemType == 103)
+                                {
+                                    __result = false;
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+                return true;
             }
         }
 

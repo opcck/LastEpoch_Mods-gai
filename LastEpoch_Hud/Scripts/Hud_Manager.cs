@@ -351,18 +351,57 @@ namespace LastEpoch_Hud.Scripts
                         }
                     }
                 }
-                /*if (Locales.debug_text)
-                {
-                    Locales.debug_json.Add("}");
-                    string json = "";
-                    foreach (string s in Locales.debug_json)
-                    {
-                        json += s;
-                    }
+                Refresh_Dropdowns_Locale();
+            }
+        }
+        void Refresh_Dropdowns_Locale()
+        {
+            try
+            {
+                Content.Character.Data.Setup_Monolith_Dropdown_Options();
+                Content.Character.Faction_Tracker.Setup_Factions_Dropdown_Options();
+                Content.Character.need_update = true;
 
-                    Main.logger_instance.Msg("Copy to " + Locales.dictionnary_filename + Extensions.json);
-                    Main.logger_instance.Msg(json);
-                }*/
+                if (Content.Items.ForceDrop.Type_Initialized)
+                {
+                    Content.Items.ForceDrop.UpdateItems();
+                }
+                if (Content.OdlForceDrop.Type_Initialized)
+                {
+                    Content.OdlForceDrop.UpdateItems();
+                }
+
+                if (!hud_object.IsNullOrDestroyed())
+                {
+                    foreach (var dd in hud_object.GetComponentsInChildren<Dropdown>(true))
+                    {
+                        if (dd.IsNullOrDestroyed() || dd == Content.Character.Data.monolith_dropdown || dd == Content.Character.Faction_Tracker.factions_dropdown || dd == Content.Items.ForceDrop.forcedrop_items_dropdown || dd == Content.OdlForceDrop.items_dropdown) continue;
+                        if (dd.options != null && dd.options.Count > 0)
+                        {
+                            int curVal = dd.value;
+                            for (int i = 0; i < dd.options.Count; i++)
+                            {
+                                var opt = dd.options[i];
+                                if (opt != null && !string.IsNullOrEmpty(opt.text))
+                                {
+                                    string trans = LocalizeText(opt.text);
+                                    if (!string.IsNullOrEmpty(trans))
+                                    {
+                                        opt.text = trans;
+                                    }
+                                }
+                            }
+                            if (curVal < dd.options.Count && !dd.captionText.IsNullOrDestroyed())
+                            {
+                                dd.captionText.text = dd.options[curVal].text;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Main.logger_instance?.Error("Refresh_Dropdowns_Locale error: " + ex.Message);
             }
         }
         public static string LocalizeText(string text)
@@ -377,6 +416,73 @@ namespace LastEpoch_Hud.Scripts
                     return trimmedTrans;
             }
             return text;
+        }
+
+        public struct ItemDropdownEntry
+        {
+            public int subType;
+            public ushort uniqueId;
+            public string rawName;
+            public string locName;
+            public UniqueList.LegendaryType legendaryType;
+        }
+
+        public static string GetLocalizedItemSubtypeName(int baseTypeID, int subTypeID, string fallbackName)
+        {
+            try
+            {
+                if (!Il2Cpp.Localization.Items.IsNullOrDestroyed())
+                {
+                    string loc = Il2Cpp.Localization.Items.GetSubTypeName(baseTypeID, subTypeID);
+                    if (!string.IsNullOrEmpty(loc)) return loc;
+                }
+            }
+            catch { }
+            try
+            {
+                string key = "Item_SubType_Name_" + baseTypeID + "_" + subTypeID;
+                string loc = "";
+                if (Il2Cpp.Localization.TryGetText(key, out loc) && !string.IsNullOrEmpty(loc))
+                {
+                    return loc;
+                }
+            }
+            catch { }
+            try
+            {
+                if (!Refs_Manager.item_list.IsNullOrDestroyed())
+                {
+                    string loc = ItemList.get().GetItemDisplayName(baseTypeID, subTypeID);
+                    if (!string.IsNullOrEmpty(loc)) return loc;
+                }
+            }
+            catch { }
+            return fallbackName;
+        }
+
+        public static string GetLocalizedUniqueName(UniqueList.Entry unique, string fallbackName)
+        {
+            if (unique.IsNullOrDestroyed()) return fallbackName;
+            try
+            {
+                if (!Il2Cpp.Localization.Items.IsNullOrDestroyed())
+                {
+                    string loc = Il2Cpp.Localization.Items.GetUniqueName(unique.uniqueID, true, false);
+                    if (!string.IsNullOrEmpty(loc)) return loc;
+                }
+            }
+            catch { }
+            try
+            {
+                string key = "Unique_Name_" + unique.uniqueID;
+                string loc = "";
+                if (Il2Cpp.Localization.TryGetText(key, out loc) && !string.IsNullOrEmpty(loc))
+                {
+                    return loc;
+                }
+            }
+            catch { }
+            return fallbackName;
         }
 
         void ReplaceText(GameObject go)
@@ -690,6 +796,7 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Items_Drop_LegendaryPotencial": { Save_Manager.instance.data.Items.Drop.Enable_LegendaryPotencial = __instance.isOn; break; }
                                     case "Toggle_Items_Drop_WeaverWill": { Save_Manager.instance.data.Items.Drop.Enable_WeaverWill = __instance.isOn; break; }
                                     case "Toggle_Items_Drop_LockWovenEnchanter": { Save_Manager.instance.data.Items.Drop.Enable_LockWovenEnchanter = __instance.isOn; break; }
+                                    case "Toggle_Items_Drop_DuplicateItem": { Save_Manager.instance.data.Items.Drop.Enable_DuplicateItem = __instance.isOn; break; }
 
                                     case "Toggle_Items_Pickup_AutoPickup_Gold": { Save_Manager.instance.data.Items.Pickup.Enable_AutoPickup_Gold = __instance.isOn; break; }
                                     case "Toggle_Items_Pickup_AutoPickup_Keys": { Save_Manager.instance.data.Items.Pickup.Enable_AutoPickup_Keys = __instance.isOn; break; }
@@ -711,6 +818,24 @@ namespace LastEpoch_Hud.Scripts
                                     case "Toggle_Items_Pickup_Hide_Notifications": { Save_Manager.instance.data.Items.Pickup.Enable_HideMaterialsNotifications = __instance.isOn; break; }
 
                                     case "Toggle_Items_Craft_Enable": { Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod = __instance.isOn; break; }
+                                    case "Toggle_Items_Craft_RemoveCorruption":
+                                        {
+                                            Save_Manager.instance.data.Items.CraftingSlot.Enable_RemoveCorruption = __instance.isOn;
+                                            if (__instance.isOn)
+                                            {
+                                                Mods.Items.Items_Crafting_Slot.TryRemoveCorruptionOnCurrentItem();
+                                            }
+                                            break;
+                                        }
+                                    case "Toggle_Items_Craft_NoCost":
+                                        {
+                                            Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost = __instance.isOn;
+                                            if (__instance.isOn)
+                                            {
+                                                Mods.Items.Items_Crafting_Slot.TryApplyNoCostOnCurrentItem();
+                                            }
+                                            break;
+                                        }
                                     case "Toggle_Items_Craft_ForginPotencial": { Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial = __instance.isOn; break; }
                                     case "Toggle_Items_Craft_Implicit0": { Save_Manager.instance.data.Items.CraftingSlot.Enable_Implicit_0 = __instance.isOn; break; }
                                     case "Toggle_Items_Craft_Implicit1": { Save_Manager.instance.data.Items.CraftingSlot.Enable_Implicit_1 = __instance.isOn; break; }
@@ -1768,6 +1893,39 @@ namespace LastEpoch_Hud.Scripts
                                 Cheats.allow_choosing_blessing = Functions.Get_ToggleInPanel(character_cheats_content, "AllowChoosingBlessings", "Toggle_Character_Cheats_AllowChooseBlessings");
                                 Cheats.unlock_all_idols = Functions.Get_ToggleInPanel(character_cheats_content, "UnlockAllIdolsSlots", "Toggle_Character_Cheats_UnlockAllIdols");
 
+                                GameObject unlockAllObj = Functions.GetChild(character_cheats_content, "UnlockAllIdolsSlots");
+                                if (!unlockAllObj.IsNullOrDestroyed())
+                                {
+                                    GameObject unlockBlockedObj = Object.Instantiate(unlockAllObj, character_cheats_content.transform);
+                                    unlockBlockedObj.name = "UnlockBlockedIdols";
+
+                                    GameObject border3 = Functions.GetChild(character_cheats_content, "Border (3)");
+                                    if (!border3.IsNullOrDestroyed())
+                                    {
+                                        GameObject newBorder = Object.Instantiate(border3, character_cheats_content.transform);
+                                        newBorder.name = "Border_Idols";
+                                        newBorder.transform.SetSiblingIndex(unlockAllObj.transform.GetSiblingIndex() + 1);
+                                        unlockBlockedObj.transform.SetSiblingIndex(newBorder.transform.GetSiblingIndex() + 1);
+                                    }
+                                    else
+                                    {
+                                        unlockBlockedObj.transform.SetSiblingIndex(unlockAllObj.transform.GetSiblingIndex() + 1);
+                                    }
+
+                                    Toggle toggle = unlockBlockedObj.GetComponentInChildren<Toggle>(true);
+                                    if (!toggle.IsNullOrDestroyed())
+                                    {
+                                        toggle.gameObject.name = "Toggle_Character_Cheats_UnlockBlockedIdols";
+                                        Cheats.unlock_blocked_idols = toggle;
+                                        Text label = toggle.GetComponentInChildren<Text>(true);
+                                        if (!label.IsNullOrDestroyed())
+                                        {
+                                            label.text = "消除神像不可用暗格";
+                                        }
+                                        Events.StyleToggle(toggle);
+                                    }
+                                }
+
                                 Cheats.autoPot_toggle = Functions.Get_ToggleInPanel(character_cheats_content, "AutoPotions", "Toggle_Character_Cheats_AutoPotions");
                                 Cheats.autopot_text = Functions.Get_TextInToggle(character_cheats_content, "AutoPotions", "Toggle_Character_Cheats_AutoPotions", "Value");
                                 Cheats.autopot_slider = Functions.Get_SliderInPanel(character_cheats_content, "AutoPotions", "Slider_Character_Cheats_AutoPotions");
@@ -1897,18 +2055,7 @@ namespace LastEpoch_Hud.Scripts
                                 Data.SetupMonolithInputs();
 
                                 Data.monolith_dropdown = Functions.Get_DopboxInPanel(character_data_content, "Monoliths", "Dropdown", new System.Action<int>((_) => { Update_Monoliths_Data(); }));
-                                Data.monolith_dropdown.options = new List<Dropdown.OptionData>();
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Fall_Of_The_Outcast") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Stolen_Lance") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Black_Sun") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Blood_Frost_And_Death") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Ending_The_Storm") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Fall_Of_The_Empire") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Reign_Of_Dragon") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Last_Ruins") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("The_Age_Of_Winter") });
-                                Data.monolith_dropdown.options.Add(new Dropdown.OptionData { text = LocalizeText("Spirits_Of_Fire") });
+                                Data.Setup_Monolith_Dropdown_Options();
                                 Data.monolith_dropdown.m_CurrentIndex = 0;
                             }
                             else { Main.logger_instance.Error("Hud Manager : character_data_content is null"); }
@@ -1928,6 +2075,7 @@ namespace LastEpoch_Hud.Scripts
                             if (!character_faction_content.IsNullOrDestroyed())
                             {
                                 Faction_Tracker.factions_dropdown = Functions.Get_DopboxInPanel(character_faction_content, "Factions_Dropdown", "Dropdown", new System.Action<int>((_) => { Update_Faction_Data(); }));
+                                Faction_Tracker.Setup_Factions_Dropdown_Options();
                                 Faction_Tracker.factions_go = Functions.GetChild(character_faction_content, "Factions_Values");
                                 if (!Faction_Tracker.factions_go.IsNullOrDestroyed()) { Faction_Tracker.factions_go.active = false; }
 
@@ -2041,6 +2189,10 @@ namespace LastEpoch_Hud.Scripts
                     if (!Cheats.unlock_all_idols.IsNullOrDestroyed())
                     {
                         Events.Set_Toggle_Event(Cheats.unlock_all_idols, Cheats.UnlockAllIdols_Toggle_Action);
+                    }
+                    if (!Cheats.unlock_blocked_idols.IsNullOrDestroyed())
+                    {
+                        Events.Set_Toggle_Event(Cheats.unlock_blocked_idols, Cheats.UnlockBlockedIdols_Toggle_Action);
                     }
                     if (!Cheats.autoPot_toggle.IsNullOrDestroyed())
                     {
@@ -2231,6 +2383,10 @@ namespace LastEpoch_Hud.Scripts
                             if (!Cheats.unlock_all_idols.IsNullOrDestroyed())
                             {
                                 Cheats.unlock_all_idols.isOn = Save_Manager.instance.data.Character.Cheats.Enable_UnlockAllIdolsSlots;
+                            }
+                            if (!Cheats.unlock_blocked_idols.IsNullOrDestroyed())
+                            {
+                                Cheats.unlock_blocked_idols.isOn = Save_Manager.instance.data.Character.Cheats.Enable_UnlockBlockedIdols;
                             }
                             if (!Cheats.autoPot_toggle.IsNullOrDestroyed())
                             {
@@ -2734,6 +2890,17 @@ namespace LastEpoch_Hud.Scripts
                         }
                     }
 
+                    public static Toggle unlock_blocked_idols = null;
+                    public static readonly System.Action<bool> UnlockBlockedIdols_Toggle_Action = new System.Action<bool>(Set_UnlockBlockedIdols_Enable);
+                    private static void Set_UnlockBlockedIdols_Enable(bool enable)
+                    {
+                        if ((!Save_Manager.instance.IsNullOrDestroyed()) && (!unlock_blocked_idols.IsNullOrDestroyed()))
+                        {
+                            Save_Manager.instance.data.Character.Cheats.Enable_UnlockBlockedIdols = unlock_blocked_idols.isOn;
+                            Mods.Character.Character_UnlockBlockedIdols.Update();
+                        }
+                    }
+
                     public static Toggle autoPot_toggle = null;
                     public static readonly System.Action<bool> AutoPot_Toggle_Action = new System.Action<bool>(Set_AutoPot_Enable);
                     private static void Set_AutoPot_Enable(bool enable)
@@ -2995,6 +3162,33 @@ namespace LastEpoch_Hud.Scripts
                     public static Dropdown monolith_dropdown = null;
                     public static bool monolith_inputs_ready = false;
                     static bool suppress_monolith_input = false;
+
+                    public static void Setup_Monolith_Dropdown_Options()
+                    {
+                        if (monolith_dropdown.IsNullOrDestroyed()) return;
+                        int curIndex = monolith_dropdown.value;
+                        Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Fall_Of_The_Outcast") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("The_Stolen_Lance") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("The_Black_Sun") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Blood_Frost_And_Death") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Ending_The_Storm") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Fall_Of_The_Empire") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Reign_Of_Dragon") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("The_Last_Ruins") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("The_Age_Of_Winter") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Spirits_Of_Fire") });
+                        monolith_dropdown.options = options;
+                        if (curIndex < options.Count)
+                        {
+                            monolith_dropdown.value = curIndex;
+                            if (!monolith_dropdown.captionText.IsNullOrDestroyed())
+                            {
+                                monolith_dropdown.captionText.text = options[curIndex].text;
+                            }
+                        }
+                    }
 
                     public static GameObject monolith_stability_basic_go = null;
                     public static Text monolith_stability_basic_text = null;
@@ -3291,6 +3485,26 @@ namespace LastEpoch_Hud.Scripts
                     }
                                         
                     public static Dropdown factions_dropdown = null;
+                    public static void Setup_Factions_Dropdown_Options()
+                    {
+                        if (factions_dropdown.IsNullOrDestroyed()) return;
+                        int curIndex = factions_dropdown.value;
+                        Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Circle of Fortune") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Merchant's Guild") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("Forgotten Knights") });
+                        options.Add(new Dropdown.OptionData { text = LocalizeText("The Woven") });
+                        factions_dropdown.options = options;
+                        if (curIndex < options.Count)
+                        {
+                            factions_dropdown.value = curIndex;
+                            if (!factions_dropdown.captionText.IsNullOrDestroyed())
+                            {
+                                factions_dropdown.captionText.text = options[curIndex].text;
+                            }
+                        }
+                    }
                     public static GameObject factions_go = null;
                     public static Text factions_favor_text = null;
                     public static Slider factions_favor_slider = null;
@@ -3546,15 +3760,35 @@ namespace LastEpoch_Hud.Scripts
                                         Text label = toggle.GetComponentInChildren<Text>(true);
                                         if (!label.IsNullOrDestroyed())
                                         {
-                                            label.text = "锁定编制附魔次数";
+                                            label.text = (Locales.current == Locales.Selected.Chinese) ? "锁定编织附魔次数" : "Lock Woven Enchanter";
                                         }
                                         Events.StyleToggle(toggle);
                                     }
+
+                                    GameObject duplicateItemObj = Object.Instantiate(forceSealObj, items_drop_content.transform);
+                                    duplicateItemObj.name = "DuplicateItem";
+                                    RectTransform dupRt = duplicateItemObj.GetComponent<RectTransform>();
+                                    if (!dupRt.IsNullOrDestroyed())
+                                    {
+                                        dupRt.anchoredPosition = new Vector2(dupRt.anchoredPosition.x, -1144f);
+                                    }
+                                    Toggle dupToggle = duplicateItemObj.GetComponentInChildren<Toggle>(true);
+                                    if (!dupToggle.IsNullOrDestroyed())
+                                    {
+                                        dupToggle.gameObject.name = "Toggle_Items_Drop_DuplicateItem";
+                                        Drop.duplicate_item_toggle = dupToggle;
+                                        Text dupLabel = dupToggle.GetComponentInChildren<Text>(true);
+                                        if (!dupLabel.IsNullOrDestroyed())
+                                        {
+                                            dupLabel.text = (Locales.current == Locales.Selected.Chinese) ? "复制物品" : "Duplicate Item";
+                                        }
+                                        Events.StyleToggle(dupToggle);
+                                    }
                                 }
                                 RectTransform dropContentRt = items_drop_content.GetComponent<RectTransform>();
-                                if (!dropContentRt.IsNullOrDestroyed() && dropContentRt.sizeDelta.y < 1200f)
+                                if (!dropContentRt.IsNullOrDestroyed() && dropContentRt.sizeDelta.y < 1250f)
                                 {
-                                    dropContentRt.sizeDelta = new Vector2(dropContentRt.sizeDelta.x, 1200f);
+                                    dropContentRt.sizeDelta = new Vector2(dropContentRt.sizeDelta.x, 1250f);
                                 }
                             }
 
@@ -3630,6 +3864,190 @@ namespace LastEpoch_Hud.Scripts
                             GameObject items_craft_content = Functions.GetViewportContent(content_obj, "Items_Craft", "Items_Craft_Content");
                             if (!items_craft_content.IsNullOrDestroyed())
                             {
+                                GameObject removeCorruptionObj = Functions.GetChild(items_craft_content, "RemoveCorruption");
+                                if (removeCorruptionObj.IsNullOrDestroyed())
+                                {
+                                    GameObject forginPotencialObj = Functions.GetChild(items_craft_content, "ForginPotencial");
+                                    if (!forginPotencialObj.IsNullOrDestroyed())
+                                    {
+                                        removeCorruptionObj = Object.Instantiate(forginPotencialObj, items_craft_content.transform);
+                                        removeCorruptionObj.name = "RemoveCorruption";
+
+                                        // 放置到最底部的功能项位置（WeaverWill 之后、Label (1) 之前）
+                                        RectTransform rcRt = removeCorruptionObj.GetComponent<RectTransform>();
+                                        if (!rcRt.IsNullOrDestroyed())
+                                        {
+                                            rcRt.anchoredPosition = new Vector2(0f, -1078f);
+                                            rcRt.sizeDelta = new Vector2(0f, 40f);
+                                        }
+
+                                        // 移除克隆体中的滑块组件，避免多余显示
+                                        GameObject sliderObj = Functions.GetChild(removeCorruptionObj, "Slider_Items_Craft_ForginPotencial", false);
+                                        if (!sliderObj.IsNullOrDestroyed())
+                                        {
+                                            Object.Destroy(sliderObj);
+                                        }
+
+                                        // 克隆 Border (24) 分隔线，置于 RemoveCorruption 之后
+                                        GameObject border24 = Functions.GetChild(items_craft_content, "Border (24)");
+                                        if (!border24.IsNullOrDestroyed())
+                                        {
+                                            GameObject newBorder = Object.Instantiate(border24, items_craft_content.transform);
+                                            newBorder.name = "Border_RemoveCorruption";
+                                            RectTransform nbRt = newBorder.GetComponent<RectTransform>();
+                                            if (!nbRt.IsNullOrDestroyed())
+                                            {
+                                                nbRt.anchoredPosition = new Vector2(0f, -1100f);
+                                                nbRt.sizeDelta = new Vector2(0f, 2f);
+                                            }
+                                        }
+
+                                        // 将底部备注 Label (1) 下移
+                                        GameObject label1 = Functions.GetChild(items_craft_content, "Label (1)");
+                                        if (!label1.IsNullOrDestroyed())
+                                        {
+                                            RectTransform labelRt = label1.GetComponent<RectTransform>();
+                                            if (!labelRt.IsNullOrDestroyed())
+                                            {
+                                                labelRt.anchoredPosition = new Vector2(0f, -1122f);
+                                            }
+                                        }
+
+                                        // 扩展 items_craft_content 滚动区域总高度，使底部开关能完整滑动显示
+                                        RectTransform contentRt = items_craft_content.GetComponent<RectTransform>();
+                                        if (!contentRt.IsNullOrDestroyed())
+                                        {
+                                            contentRt.sizeDelta = new Vector2(contentRt.sizeDelta.x, 1150f);
+                                        }
+
+                                        Toggle toggle = removeCorruptionObj.GetComponentInChildren<Toggle>(true);
+                                        if (!toggle.IsNullOrDestroyed())
+                                        {
+                                            toggle.gameObject.name = "Toggle_Items_Craft_RemoveCorruption";
+                                            GameObject valObj = Functions.GetChild(toggle.gameObject, "Value", false);
+                                            if (!valObj.IsNullOrDestroyed())
+                                            {
+                                                Object.Destroy(valObj);
+                                            }
+
+                                            GameObject labelObj = Functions.GetChild(toggle.gameObject, "Label", false);
+                                            if (!labelObj.IsNullOrDestroyed())
+                                            {
+                                                Text labelText = labelObj.GetComponent<Text>();
+                                                if (!labelText.IsNullOrDestroyed())
+                                                {
+                                                    labelText.text = (Locales.current == Locales.Selected.Chinese) ? "解除腐化（允许锻造）" : "Remove Corruption (Allow Craft)";
+                                                }
+                                            }
+                                            else
+                                            {
+                                                foreach (Text t in toggle.GetComponentsInChildren<Text>(true))
+                                                {
+                                                    t.text = (Locales.current == Locales.Selected.Chinese) ? "解除腐化（允许锻造）" : "Remove Corruption (Allow Craft)";
+                                                }
+                                            }
+                                            Events.StyleToggle(toggle);
+                                        }
+                                    }
+                                }
+
+                                if (!removeCorruptionObj.IsNullOrDestroyed())
+                                {
+                                    CraftingSlot.remove_corruption_toggle = removeCorruptionObj.GetComponentInChildren<Toggle>(true);
+                                }
+
+                                GameObject noCostObj = Functions.GetChild(items_craft_content, "NoCost");
+                                if (noCostObj.IsNullOrDestroyed())
+                                {
+                                    GameObject forginPotencialObj = Functions.GetChild(items_craft_content, "ForginPotencial");
+                                    if (!forginPotencialObj.IsNullOrDestroyed())
+                                    {
+                                        noCostObj = Object.Instantiate(forginPotencialObj, items_craft_content.transform);
+                                        noCostObj.name = "NoCost";
+
+                                        // 放置到解除腐化之后（y = -1122）
+                                        RectTransform ncRt = noCostObj.GetComponent<RectTransform>();
+                                        if (!ncRt.IsNullOrDestroyed())
+                                        {
+                                            ncRt.anchoredPosition = new Vector2(0f, -1122f);
+                                            ncRt.sizeDelta = new Vector2(0f, 40f);
+                                        }
+
+                                        // 移除克隆体中的滑块
+                                        GameObject sliderObj = Functions.GetChild(noCostObj, "Slider_Items_Craft_ForginPotencial", false);
+                                        if (!sliderObj.IsNullOrDestroyed())
+                                        {
+                                            Object.Destroy(sliderObj);
+                                        }
+
+                                        // 克隆分割线 Border_NoCost（y = -1144）
+                                        GameObject border24 = Functions.GetChild(items_craft_content, "Border (24)");
+                                        if (!border24.IsNullOrDestroyed())
+                                        {
+                                            GameObject newBorder = Object.Instantiate(border24, items_craft_content.transform);
+                                            newBorder.name = "Border_NoCost";
+                                            RectTransform nbRt = newBorder.GetComponent<RectTransform>();
+                                            if (!nbRt.IsNullOrDestroyed())
+                                            {
+                                                nbRt.anchoredPosition = new Vector2(0f, -1144f);
+                                                nbRt.sizeDelta = new Vector2(0f, 2f);
+                                            }
+                                        }
+
+                                        // 将底部备注 Label (1) 顺延下移至 y = -1166
+                                        GameObject label1 = Functions.GetChild(items_craft_content, "Label (1)");
+                                        if (!label1.IsNullOrDestroyed())
+                                        {
+                                            RectTransform labelRt = label1.GetComponent<RectTransform>();
+                                            if (!labelRt.IsNullOrDestroyed())
+                                            {
+                                                labelRt.anchoredPosition = new Vector2(0f, -1166f);
+                                            }
+                                        }
+
+                                        // 扩展 items_craft_content 滚动区域总高度至 1200
+                                        RectTransform contentRt = items_craft_content.GetComponent<RectTransform>();
+                                        if (!contentRt.IsNullOrDestroyed())
+                                        {
+                                            contentRt.sizeDelta = new Vector2(contentRt.sizeDelta.x, 1200f);
+                                        }
+
+                                        Toggle toggle = noCostObj.GetComponentInChildren<Toggle>(true);
+                                        if (!toggle.IsNullOrDestroyed())
+                                        {
+                                            toggle.gameObject.name = "Toggle_Items_Craft_NoCost";
+                                            GameObject valObj = Functions.GetChild(toggle.gameObject, "Value", false);
+                                            if (!valObj.IsNullOrDestroyed())
+                                            {
+                                                Object.Destroy(valObj);
+                                            }
+
+                                            GameObject labelObj = Functions.GetChild(toggle.gameObject, "Label", false);
+                                            if (!labelObj.IsNullOrDestroyed())
+                                            {
+                                                Text labelText = labelObj.GetComponent<Text>();
+                                                if (!labelText.IsNullOrDestroyed())
+                                                {
+                                                    labelText.text = (Locales.current == Locales.Selected.Chinese) ? "锻造不消耗潜能与材料（符文/雕文）" : "No Cost (Potential, Runes & Glyphs)";
+                                                }
+                                            }
+                                            else
+                                            {
+                                                foreach (Text t in toggle.GetComponentsInChildren<Text>(true))
+                                                {
+                                                    t.text = (Locales.current == Locales.Selected.Chinese) ? "锻造不消耗潜能与材料（符文/雕文）" : "No Cost (Potential, Runes & Glyphs)";
+                                                }
+                                            }
+                                            Events.StyleToggle(toggle);
+                                        }
+                                    }
+                                }
+
+                                if (!noCostObj.IsNullOrDestroyed())
+                                {
+                                    CraftingSlot.no_cost_toggle = noCostObj.GetComponentInChildren<Toggle>(true);
+                                }
+
                                 CraftingSlot.forgin_potencial_toggle = Functions.Get_ToggleInPanel(items_craft_content, "ForginPotencial", "Toggle_Items_Craft_ForginPotencial");
                                 CraftingSlot.forgin_potencial_text = Functions.Get_TextInToggle(items_craft_content, "ForginPotencial", "Toggle_Items_Craft_ForginPotencial", "Value");
                                 CraftingSlot.forgin_potencial_slider = Functions.Get_SliderInPanel(items_craft_content, "ForginPotencial", "Slider_Items_Craft_ForginPotencial");
@@ -3808,6 +4226,7 @@ namespace LastEpoch_Hud.Scripts
                             Drop.weaver_will_slider_min.value = Save_Manager.instance.data.Items.Drop.WeaverWill_Min;
                             Drop.weaver_will_slider_max.value = Save_Manager.instance.data.Items.Drop.WeaverWill_Max;
                             if (!Drop.lock_woven_enchanter_toggle.IsNullOrDestroyed()) { Drop.lock_woven_enchanter_toggle.isOn = Save_Manager.instance.data.Items.Drop.Enable_LockWovenEnchanter; }
+                            if (!Drop.duplicate_item_toggle.IsNullOrDestroyed()) { Drop.duplicate_item_toggle.isOn = Save_Manager.instance.data.Items.Drop.Enable_DuplicateItem; }
                             
                             //Pickup
                             Pickup.autopickup_gold_toggle.isOn = Save_Manager.instance.data.Items.Pickup.Enable_AutoPickup_Gold;
@@ -3842,6 +4261,14 @@ namespace LastEpoch_Hud.Scripts
 
                             //Craft
                             CraftingSlot.enable_mod.isOn = Save_Manager.instance.data.Items.CraftingSlot.Enable_Mod;
+                            if (!CraftingSlot.remove_corruption_toggle.IsNullOrDestroyed())
+                            {
+                                CraftingSlot.remove_corruption_toggle.isOn = Save_Manager.instance.data.Items.CraftingSlot.Enable_RemoveCorruption;
+                            }
+                            if (!CraftingSlot.no_cost_toggle.IsNullOrDestroyed())
+                            {
+                                CraftingSlot.no_cost_toggle.isOn = Save_Manager.instance.data.Items.CraftingSlot.Enable_NoCost;
+                            }
                             CraftingSlot.forgin_potencial_toggle.isOn = Save_Manager.instance.data.Items.CraftingSlot.Enable_ForginPotencial;
                             CraftingSlot.forgin_potencial_slider.value = Save_Manager.instance.data.Items.CraftingSlot.ForginPotencial;
 
@@ -4037,6 +4464,7 @@ namespace LastEpoch_Hud.Scripts
                     public static Slider weaver_will_slider_min = null;
                     public static Slider weaver_will_slider_max = null;
                     public static Toggle lock_woven_enchanter_toggle = null;
+                    public static Toggle duplicate_item_toggle = null;
                 }
                 public class Pickup
                 {
@@ -4133,6 +4561,7 @@ namespace LastEpoch_Hud.Scripts
                     public static bool btn_enable = false;
                     public static bool Type_Initialized = false;
                     public static bool Initializing_type = false;
+                    public static System.Collections.Generic.List<ItemDropdownEntry> items_cache = new System.Collections.Generic.List<ItemDropdownEntry>();
 
                     public static void InitForcedrop()
                     {
@@ -4163,6 +4592,7 @@ namespace LastEpoch_Hud.Scripts
                             forcedrop_rarity_dropdown.enabled = false;
 
                             forcedrop_items_dropdown.ClearOptions();
+                            items_cache.Clear();
                             forcedrop_items_dropdown.enabled = false;
 
                             //forcedrop_drop_button.enabled = false;
@@ -4278,6 +4708,7 @@ namespace LastEpoch_Hud.Scripts
                         {
                             //Main.logger_instance.Msg("Update Items : Type = " + item_type + ", Rarity = " + item_rarity);
                             forcedrop_items_dropdown.ClearOptions();
+                            items_cache.Clear();
 
                             Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
                             options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
@@ -4292,9 +4723,19 @@ namespace LastEpoch_Hud.Scripts
                                         {
                                             foreach (ItemList.EquipmentItem item in item_t.subItems)
                                             {
-                                                string name = item.displayName;
-                                                if (name == "" ) { name =  item.name; }
-                                                options.Add(new Dropdown.OptionData { text = name });
+                                                string rawName = item.displayName;
+                                                if (string.IsNullOrEmpty(rawName)) { rawName = item.name; }
+                                                string locName = GetLocalizedItemSubtypeName(item_t.baseTypeID, item.subTypeID, rawName);
+                                                if (string.IsNullOrEmpty(locName)) { locName = rawName; }
+
+                                                options.Add(new Dropdown.OptionData { text = locName });
+                                                items_cache.Add(new ItemDropdownEntry
+                                                {
+                                                    subType = item.subTypeID,
+                                                    uniqueId = 0,
+                                                    rawName = rawName,
+                                                    locName = locName
+                                                });
                                             }
                                             type_found = true;
                                         }
@@ -4307,9 +4748,19 @@ namespace LastEpoch_Hud.Scripts
                                             {
                                                 foreach (ItemList.NonEquipmentItem item in item_t.subItems)
                                                 {
-                                                    string name = item.displayName;
-                                                    if (name == "") { name = item.name; }
-                                                    options.Add(new Dropdown.OptionData { text = name });
+                                                    string rawName = item.displayName;
+                                                    if (string.IsNullOrEmpty(rawName)) { rawName = item.name; }
+                                                    string locName = GetLocalizedItemSubtypeName(item_t.baseTypeID, item.subTypeID, rawName);
+                                                    if (string.IsNullOrEmpty(locName)) { locName = rawName; }
+
+                                                    options.Add(new Dropdown.OptionData { text = locName });
+                                                    items_cache.Add(new ItemDropdownEntry
+                                                    {
+                                                        subType = item.subTypeID,
+                                                        uniqueId = 0,
+                                                        rawName = rawName,
+                                                        locName = locName
+                                                    });
                                                 }
 
                                                 type_found = true;
@@ -4328,9 +4779,21 @@ namespace LastEpoch_Hud.Scripts
                                                 (((item_rarity == 7) && (!unique.isSetItem)) ||
                                                 ((item_rarity == 8) && (unique.isSetItem))))
                                             {
-                                                string name = unique.displayName;
-                                                if (name == "") { name = unique.name; }
-                                                options.Add(new Dropdown.OptionData { text = name });
+                                                string rawName = unique.displayName;
+                                                if (string.IsNullOrEmpty(rawName)) { rawName = unique.name; }
+                                                string locName = GetLocalizedUniqueName(unique, rawName);
+                                                if (string.IsNullOrEmpty(locName)) { locName = rawName; }
+
+                                                int sub = (unique.subTypes != null && unique.subTypes.Count > 0) ? (int)unique.subTypes[0] : 0;
+                                                options.Add(new Dropdown.OptionData { text = locName });
+                                                items_cache.Add(new ItemDropdownEntry
+                                                {
+                                                    subType = sub,
+                                                    uniqueId = unique.uniqueID,
+                                                    rawName = rawName,
+                                                    locName = locName,
+                                                    legendaryType = unique.legendaryType
+                                                });
                                             }
                                         }
                                     }
@@ -4349,63 +4812,31 @@ namespace LastEpoch_Hud.Scripts
                             int index = forcedrop_items_dropdown.value;
                             if (index < forcedrop_items_dropdown.options.Count)
                             {
-                                string item_str = forcedrop_items_dropdown.options[forcedrop_items_dropdown.value].text;
+                                string item_str = forcedrop_items_dropdown.options[index].text;
                                 //Main.logger_instance.Msg("Select : Item = " + item_str);
 
                                 item_subtype = -1;
                                 item_unique_id = 0;
-                                bool item_found = false;
-                                if (item_rarity == 0)
+
+                                if (index > 0 && (index - 1) < items_cache.Count)
                                 {
-                                    foreach (ItemList.BaseEquipmentItem item_t in ItemList.get().EquippableItems)
+                                    var entry = items_cache[index - 1];
+                                    item_subtype = entry.subType;
+                                    item_unique_id = entry.uniqueId;
+                                }
+                                else if (index > 0)
+                                {
+                                    foreach (var entry in items_cache)
                                     {
-                                        if (item_t.baseTypeID == item_type)
+                                        if (item_str == entry.locName || item_str == entry.rawName)
                                         {
-                                            foreach (ItemList.EquipmentItem item in item_t.subItems)
-                                            {
-                                                if ((item_str == item.displayName) || (item_str == item.name))
-                                                {
-                                                    item_subtype = item.subTypeID;
-                                                    item_found = true;
-                                                    break;
-                                                }                                                
-                                            }
-                                        }
-                                    }
-                                    if (!item_found)
-                                    {                                        
-                                        foreach (ItemList.BaseNonEquipmentItem item_t in ItemList.get().nonEquippableItems)
-                                        {
-                                            if (item_t.baseTypeID == item_type)
-                                            {
-                                                foreach (ItemList.NonEquipmentItem item in item_t.subItems)
-                                                {
-                                                    if ((item_str == item.displayName) || (item_str == item.name))
-                                                    {
-                                                        item_subtype = item.subTypeID;
-                                                        break;
-                                                    }
-                                                }
-                                            }
+                                            item_subtype = entry.subType;
+                                            item_unique_id = entry.uniqueId;
+                                            break;
                                         }
                                     }
                                 }
-                                else if ((item_rarity == 7) || (item_rarity == 8))
-                                {
-                                    if (UniqueList.instance.IsNullOrDestroyed()) { UniqueList.getUnique(0); }
-                                    if (!UniqueList.instance.IsNullOrDestroyed())
-                                    {
-                                        foreach (UniqueList.Entry unique in UniqueList.instance.uniques)
-                                        {
-                                            if ((item_str == unique.displayName) || (item_str == unique.name))
-                                            {
-                                                item_subtype = unique.subTypes[0]; //need to be fix here
-                                                item_unique_id = unique.uniqueID;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
+
                                 UpdateButton();
                             }
                         }
@@ -4464,6 +4895,8 @@ namespace LastEpoch_Hud.Scripts
                 public class CraftingSlot
                 {
                     public static Toggle enable_mod = null;
+                    public static Toggle remove_corruption_toggle = null;
+                    public static Toggle no_cost_toggle = null;
 
                     public static Toggle forgin_potencial_toggle = null;
                     public static Text forgin_potencial_text = null;
@@ -5649,6 +6082,7 @@ namespace LastEpoch_Hud.Scripts
                 public static Dropdown items_dropdown = null;
                 public static int item_subtype = -1;
                 public static int item_unique_id = -1;
+                public static System.Collections.Generic.List<ItemDropdownEntry> items_cache = new System.Collections.Generic.List<ItemDropdownEntry>();
 
                 //Implicits
                 public static bool implicits_enable = false;
@@ -6345,6 +6779,7 @@ namespace LastEpoch_Hud.Scripts
                         rarity_dropdown.enabled = false;
 
                         items_dropdown.ClearOptions();
+                        items_cache.Clear();
                         items_dropdown.enabled = false;
 
                         //forcedrop_drop_button.enabled = false;
@@ -6467,6 +6902,7 @@ namespace LastEpoch_Hud.Scripts
                     {
                         //Main.logger_instance.Msg("Update Items : Type = " + item_type + ", Rarity = " + item_rarity);
                         items_dropdown.ClearOptions();
+                        items_cache.Clear();
 
                         Il2CppSystem.Collections.Generic.List<Dropdown.OptionData> options = new Il2CppSystem.Collections.Generic.List<Dropdown.OptionData>();
                         options.Add(new Dropdown.OptionData { text = LocalizeText("Select") });
@@ -6481,9 +6917,19 @@ namespace LastEpoch_Hud.Scripts
                                     {
                                         foreach (ItemList.EquipmentItem item in item_t.subItems)
                                         {
-                                            string name = item.displayName;
-                                            if (name == "") { name = item.name; }
-                                            options.Add(new Dropdown.OptionData { text = name });
+                                            string rawName = item.displayName;
+                                            if (string.IsNullOrEmpty(rawName)) { rawName = item.name; }
+                                            string locName = GetLocalizedItemSubtypeName(item_t.baseTypeID, item.subTypeID, rawName);
+                                            if (string.IsNullOrEmpty(locName)) { locName = rawName; }
+
+                                            options.Add(new Dropdown.OptionData { text = locName });
+                                            items_cache.Add(new ItemDropdownEntry
+                                            {
+                                                subType = item.subTypeID,
+                                                uniqueId = 0,
+                                                rawName = rawName,
+                                                locName = locName
+                                            });
                                         }
                                         type_found = true;
                                     }
@@ -6496,9 +6942,19 @@ namespace LastEpoch_Hud.Scripts
                                         {
                                             foreach (ItemList.NonEquipmentItem item in item_t.subItems)
                                             {
-                                                string name = item.displayName;
-                                                if (name == "") { name = item.name; }
-                                                options.Add(new Dropdown.OptionData { text = name });
+                                                string rawName = item.displayName;
+                                                if (string.IsNullOrEmpty(rawName)) { rawName = item.name; }
+                                                string locName = GetLocalizedItemSubtypeName(item_t.baseTypeID, item.subTypeID, rawName);
+                                                if (string.IsNullOrEmpty(locName)) { locName = rawName; }
+
+                                                options.Add(new Dropdown.OptionData { text = locName });
+                                                items_cache.Add(new ItemDropdownEntry
+                                                {
+                                                    subType = item.subTypeID,
+                                                    uniqueId = 0,
+                                                    rawName = rawName,
+                                                    locName = locName
+                                                });
                                             }
 
                                             type_found = true;
@@ -6517,9 +6973,21 @@ namespace LastEpoch_Hud.Scripts
                                             (((item_rarity == 7) && (!unique.isSetItem)) ||
                                             ((item_rarity == 8) && (unique.isSetItem))))
                                         {
-                                            string name = unique.displayName;
-                                            if (name == "") { name = unique.name; }
-                                            options.Add(new Dropdown.OptionData { text = name });
+                                            string rawName = unique.displayName;
+                                            if (string.IsNullOrEmpty(rawName)) { rawName = unique.name; }
+                                            string locName = GetLocalizedUniqueName(unique, rawName);
+                                            if (string.IsNullOrEmpty(locName)) { locName = rawName; }
+
+                                            int sub = (unique.subTypes != null && unique.subTypes.Count > 0) ? (int)unique.subTypes[0] : 0;
+                                            options.Add(new Dropdown.OptionData { text = locName });
+                                            items_cache.Add(new ItemDropdownEntry
+                                            {
+                                                subType = sub,
+                                                uniqueId = unique.uniqueID,
+                                                rawName = rawName,
+                                                locName = locName,
+                                                legendaryType = unique.legendaryType
+                                            });
                                         }
                                     }
                                 }
@@ -6538,65 +7006,33 @@ namespace LastEpoch_Hud.Scripts
                         int index = items_dropdown.value;
                         if (index < items_dropdown.options.Count)
                         {
-                            string item_str = items_dropdown.options[items_dropdown.value].text;
+                            string item_str = items_dropdown.options[index].text;
                             //Main.logger_instance.Msg("Select : Item = " + item_str);
 
                             item_subtype = -1;
                             item_unique_id = 0;
 
-                            bool item_found = false;
-                            if (item_rarity == 0)
+                            if (index > 0 && (index - 1) < items_cache.Count)
                             {
-                                foreach (ItemList.BaseEquipmentItem item_t in ItemList.get().EquippableItems)
+                                var entry = items_cache[index - 1];
+                                item_subtype = entry.subType;
+                                item_unique_id = entry.uniqueId;
+                                item_legendary_type = entry.legendaryType;
+                            }
+                            else if (index > 0)
+                            {
+                                foreach (var entry in items_cache)
                                 {
-                                    if (item_t.baseTypeID == item_type)
+                                    if (item_str == entry.locName || item_str == entry.rawName)
                                     {
-                                        foreach (ItemList.EquipmentItem item in item_t.subItems)
-                                        {
-                                            if ((item_str == item.displayName) || (item_str == item.name))
-                                            {
-                                                item_subtype = item.subTypeID;
-                                                item_found = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (!item_found)
-                                {
-                                    foreach (ItemList.BaseNonEquipmentItem item_t in ItemList.get().nonEquippableItems)
-                                    {
-                                        if (item_t.baseTypeID == item_type)
-                                        {
-                                            foreach (ItemList.NonEquipmentItem item in item_t.subItems)
-                                            {
-                                                if ((item_str == item.displayName) || (item_str == item.name))
-                                                {
-                                                    item_subtype = item.subTypeID;
-                                                    break;
-                                                }
-                                            }
-                                        }
+                                        item_subtype = entry.subType;
+                                        item_unique_id = entry.uniqueId;
+                                        item_legendary_type = entry.legendaryType;
+                                        break;
                                     }
                                 }
                             }
-                            else if ((item_rarity == 7) || (item_rarity == 8))
-                            {
-                                if (UniqueList.instance.IsNullOrDestroyed()) { UniqueList.getUnique(0); }
-                                if (!UniqueList.instance.IsNullOrDestroyed())
-                                {
-                                    foreach (UniqueList.Entry unique in UniqueList.instance.uniques)
-                                    {
-                                        if ((item_str == unique.displayName) || (item_str == unique.name))
-                                        {
-                                            item_subtype = unique.subTypes[0]; //need to be fix here
-                                            item_unique_id = unique.uniqueID;
-                                            item_legendary_type = unique.legendaryType;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+
                             shard_initialized = false;
                             if (enable && !center_content.IsNullOrDestroyed()) { InitializeShardsView(); }
                             UpdateUI();

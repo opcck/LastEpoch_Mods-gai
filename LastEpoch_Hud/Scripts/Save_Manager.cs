@@ -100,6 +100,7 @@ namespace LastEpoch_Hud.Scripts
                         Enable_LowLife = false,
                         Enable_CanChooseBlessing = false,
                         Enable_UnlockAllIdolsSlots = false,
+                        Enable_UnlockBlockedIdols = false,
                         Enable_AutoPot = false,
                         autoPot = 0f,
                         Enable_DensityMultiplier = false,
@@ -200,7 +201,8 @@ namespace LastEpoch_Hud.Scripts
                         Enable_WeaverWill = false,
                         WeaverWill_Min = 0,
                         WeaverWill_Max = 28,
-                        Enable_LockWovenEnchanter = false
+                        Enable_LockWovenEnchanter = false,
+                        Enable_DuplicateItem = false
                     },
                     Pickup =
                     {
@@ -236,6 +238,8 @@ namespace LastEpoch_Hud.Scripts
                     CraftingSlot =
                     {
                         Enable_Mod = false,
+                        Enable_RemoveCorruption = false,
+                        Enable_NoCost = false,
                         Enable_ForginPotencial = false,
                         ForginPotencial = 255,
                         Enable_Implicit_0 = false,
@@ -652,7 +656,8 @@ namespace LastEpoch_Hud.Scripts
                 public bool Enable_GodMode;
                 public bool Enable_LowLife;
                 public bool Enable_CanChooseBlessing;
-                public bool Enable_UnlockAllIdolsSlots;                
+                public bool Enable_UnlockAllIdolsSlots;
+                public bool Enable_UnlockBlockedIdols;                
                 public bool Enable_AutoPot;
                 public float autoPot;
                 public bool Enable_DensityMultiplier;
@@ -771,6 +776,7 @@ namespace LastEpoch_Hud.Scripts
                 public float WeaverWill_Max;
 
                 public bool Enable_LockWovenEnchanter;
+                public bool Enable_DuplicateItem;
             }
             public struct Pickup
             {
@@ -810,6 +816,8 @@ namespace LastEpoch_Hud.Scripts
             public struct CraftingSlot
             {
                 public bool Enable_Mod;  //added by https://github.com/RolandSolymosi
+                public bool Enable_RemoveCorruption;
+                public bool Enable_NoCost;
 
                 public bool Enable_ForginPotencial;
                 public float ForginPotencial;
